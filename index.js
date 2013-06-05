@@ -1,6 +1,6 @@
+"use strict";
 
-var _    = require('lodash')
-, Future = require('futr')
+var Future = require('futr')
 ;
 
 var $root = new Future()
@@ -8,16 +8,19 @@ var $root = new Future()
 , STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg
 ;
 
-function Value(val) {
-	Object.defineProperties(this, {
-		_value: { value: val }
-	});
+function Value() {
 }
 Object.defineProperties(Value.prototype, {
 	get: {
 		value: function (callback) {
 			if (callback) callback(this._value);
 			return this._value;
+		}
+	},
+	set: {
+		value: function(val) {
+			this._value = val;
+			return val;
 		}
 	},
 	has: {
@@ -55,12 +58,13 @@ function Container(next, tenant) {
 }
 
 Object.defineProperties(Container.prototype, {
+
 	future: {
-		value: function(what, kind) {
+		value: function(what, kind, it) {
 			var reg = this._reg;
 			var futr = reg[what];
 			if (!futr) {
-				reg[what] = futr = new kind();
+				reg[what] = futr = new kind(it);
 			}
 			return futr;
 		}
@@ -83,7 +87,7 @@ Object.defineProperties(Container.prototype, {
 	get: {
 		value: function(what, callback) {
 			if (typeof what !== 'undefined') {
-				var c = this;
+				var f, c = this;
 				while(c) {
 					if (c._reg.hasOwnProperty(what)) {
 						return c._reg[what].get(callback);
@@ -106,12 +110,13 @@ Object.defineProperties(Container.prototype, {
 				}
 				var r = this._reg;
 				if (typeof it === 'undefined') {
-					r[what] = undefined;
+					delete r[what];
 				} else {
-					var f = this.future(what, Future);
+					var f = this.future(what, Value);
 					f.set(it);
 				}
 			}
+			return it;
 		},
 		enumerable: true
 	},
@@ -127,25 +132,35 @@ Object.defineProperties(Container.prototype, {
 					} else {
 						options = options || {};
 						var deps = it.toString().replace(STRIP_COMMENTS,"").match(FN_ARGS)[1].split(',');
-						var dependencies = [], i, len = deps.length;
-						for(i = 0; i < len; i++) {
+						var dependencies = []
+						, i = -1
+						, len = deps.length,
+						finish = function() {
+							var j = -1
+							, args = []
+							, dep 
+							;
+							while(++j < len) {
+								dep = dependencies[j];
+								if (dep.kind === 'f') {
+									if (!dep.value.has()) return;
+									args.push(dep.value.get());
+								} else {
+									args.push(dep.value);
+								}
+							}
+							futr.set(it.apply(this, args));
+						}
+						;
+						while(++i < len) {
 							var dep = deps[i].trim();
 							if (options.hasOwnProperty(dep)) {
-								dependencies.push(new Future(options[dep]));
+								dependencies.push({ kind: 'u', value: options[dep] });
 							} else {
-								dependencies.push(this.future(dep));
+								dependencies.push({ kind: 'f', value: this.future(dep, Future) });
+								dependencies[i].value.get(finish);
 							}
-						}
-						for(i = 0; i < len; i++) {
-							dependencies[i].get(function(err, res) {
-								if (_.every(dependencies, function(f) {return f.has(); })) {
-									var args = _.reduce(dependencies, function(accum, f) {
-										accum.push(f.get());
-										return accum;
-									}, []);
-									futr.set(it.apply(this, args));
-								}
-							});
+							finish();
 						}
 					}
 				} else {
@@ -167,25 +182,33 @@ Object.defineProperties(Container.prototype, {
 			} else {
 				options = options || {};
 				var deps = it.toString().replace(STRIP_COMMENTS,"").match(FN_ARGS)[1].split(',');
-				var dependencies = [], i, len = deps.length;
-				for(i = 0; i < len; i++) {
+				var dependencies = []
+				, i = -1
+				, len = deps.length
+				, fulfill = function() {
+					var j = -1
+					, args = []
+					, dep 
+					;
+					while(++j < len) {
+						dep = dependencies[j];
+						if (dep.kind === 'd') {
+							if (!dep.value.has()) return;
+							args.push(dep.value.get());
+						} else {
+							args.push(dep.value);
+						}
+					}
+					futr.set(it.apply(this, args));
+				}
+				;
+				while(++i < len) {
 					var dep = deps[i].trim();
 					if (options.hasOwnProperty(dep)) {
-						dependencies.push(new Future(options[dep]));
+						dependencies.push({ kind: 'u', value: options[dep] });
 					} else {
-						dependencies.push(this.future(dep));
+						dependencies.push({ kind: 'd', value: dep });
 					}
-				}
-				for(i = 0; i < len; i++) {
-					dependencies[i].get(function(err, res) {
-						if (_.every(dependencies, function(f) {return f.has(); })) {
-							var args = _.reduce(dependencies, function(accum, f) {
-								accum.push(f.get());
-								return accum;
-							}, []);
-							futr.set(it.apply(this, args));
-						}
-					});
 				}
 			}
 		},

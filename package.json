@@ -12,8 +12,7 @@
 		"test": "mocha -R spec"
 	},
 	"dependencies": {
-		"futr": "~0.1.x",
-		"lodash": "~1.2.x"
+		"futr": "~0.1.x"
 	 },
 	"devDependencies": {
 			"expect.js": "~0.2.x",
