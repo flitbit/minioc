@@ -4,6 +4,7 @@
 	"author": "Phillip Clark <phillip@flitbit.com>",
   "description": "A miniature, conventions-based IOC implementation for nodejs.",
 	"main": "index.js",
+	"keywords": ["injection", "container", "dependency", "ioc", "di"],
 	"directories": {
 		"example": "examples",
 		"test": "test"
