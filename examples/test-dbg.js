@@ -17,18 +17,21 @@ var test_value = "this is the test value"
 
 expect(root.get('$container')).to.be(root);
 
-expect(root.get('$test')).to.be(); // undefined
+expect(root.get('$test')).to.be();
 
 expect(root.get('$test', function(eventual) {
-	expect(captured).to.be(); // undefined
-	captured = eventual;
-})).to.be();
-expect(captured).to.be(); // undefined
+					expect(captured).to.be();
+					captured = eventual;
+				})).to.be();
+expect(captured).to.be();
 
-expect(root.set('$test', test_value)).to.be(test_value);
+root.register('$test').as.value(test_value);
+
+expect(root.get('$test')).to.be(test_value);
 
 expect(captured).to.be(test_value);
 
-expect(root.set('$test')).to.be();
+root.register('$test').as.value();
+expect(root.get('$test')).to.be();
 
-expect(root.get('$test')).to.be(); // undefined
+expect(root.get('$test')).to.be();

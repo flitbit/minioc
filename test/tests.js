@@ -40,16 +40,19 @@ describe("Minioc", function() {
 				expect(captured).to.be(); // undefined
 			});
 
-			it('#set with $test resolves the value given value', function() {
-				expect(root.set('$test', test_value)).to.be(test_value);
+			it('#register $test as a value, can get the same value back', function() {
+				root.register('$test').as.value(test_value);
+
+				expect(root.get('$test')).to.be(test_value);
 			});
 
 			it('after the #set, the callback from the previous #get is given the value.', function() {
-				expect(captured).to.be(test_value); 
+				expect(captured).to.be(test_value);
 			});
 
-			it('#set with $test and undefined removes the value from the container', function() {
-				expect(root.set('$test')).to.be();
+			it('#register $test as undefined removes the value from the container', function() {
+				root.register('$test').as.value();
+				expect(root.get('$test')).to.be();
 			});
 
 			it('#get with non-existent $test resolves undefined', function() {
