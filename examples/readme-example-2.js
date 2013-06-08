@@ -1,5 +1,6 @@
 var minioc = require('..');
 
+// a value...
 minioc.register('item_1').as.value("I'm a value");
 
 // a factory...

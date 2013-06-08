@@ -7,27 +7,26 @@ A miniature, conventions-based IoC implementation for nodejs.
 
 After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience.
 
-## Detail
-
-`minioc` is an IoC container.
+## `minioc` is an IoC container.
 
 At its core, `minioc` is just a mapping between keys and values. It might be convenient to think of it as a hashtable, except that it behaves differently depending on how an item was put into it.
 
 It understands 3 kinds of things:
 
 * **values** - seems self explanitory
-* **factories** - which are functions that produce values
-* **constructors** - which are classes constructed on demand (depending on strategy)
+* **factories** - functions that produce values
+* **constructors** - classes constructed on demand (depending on strategy)
 
 When `register`ing items with the container, the caller has the option of indicating how the container should resolve the item. The defaults are:
 
 * **values** - always resolved as given
-* **factories** - invoked to produce a value for each call
-* **constructors** - invoked to construct a new instance for each call
+* **factories** - produce a value for each call
+* **constructors** - construct a new instance for each call
 
 ```javascript
 var minioc = require('minioc');
 
+// a value...
 minioc.register('item_1').as.value("I'm a value");
 
 // a factory...
@@ -48,6 +47,8 @@ console.log(minioc.get('item_1').toString());
 console.log(minioc.get('item_2').toString());
 console.log(minioc.get('item_3').toString());
 ```
+
+### Variance
 
 Factories and constructors can be altered at the time of registration so that the result becomes the registered value rather than the target. Such registration changes the container's behavior so that resolution does the following:
 
