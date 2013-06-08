@@ -48,12 +48,53 @@ console.log(minioc.get('item_2').toString());
 console.log(minioc.get('item_3').toString());
 ```
 
-### Variance
+### Factories and Constructors as Values
 
-Factories and constructors can be altered at the time of registration so that the result becomes the registered value rather than the target. Such registration changes the container's behavior so that resolution does the following:
+Factories and constructors can be altered at the time of registration so that the result becomes the registered value rather than the target. This changes the defaults to:
 
-* value **factories** - when the factory is available, it is invoked and its value captured to fulfill requests
-* value **constructor** - when the constructor is available, an instance is created and captured to filfill requests
+* **factories** - invoked and its value captured to fulfill requests
+* **constructor** - created and captured to filfill requests
+
+```javascript
+var minioc = require('..');
+
+var factory_seed = 0
+, ctor_seed = 0
+;
+
+var factory = function() {
+	return "I'm produced by a factory with id: ".concat(factory_seed++);
+};
+
+// a factory as a value...
+minioc.register('factory').from.factory(factory);
+
+// a constructor (class) as a value...
+function CtorExample() {
+	this.id = ctor_seed++;
+
+	this.toString = function() {
+		return "I'm an instance created by constructor with id: "
+		.concat(this.id);
+	};
+}
+
+minioc.register('ctor').from.ctor(CtorExample);
+
+// Print them to the console a couple of times
+// to ensure they are the same value...
+console.log(minioc.get('factory').toString());
+console.log(minioc.get('ctor').toString());
+
+
+console.log(factory().toString());
+console.log((new CtorExample()).toString());
+
+console.log(minioc.get('factory').toString());
+console.log(minioc.get('ctor').toString());
+```
+
+### Singleton Immutability
 
 Throughout a container's lifespan, registrations may be modified. If an item has been registered as a `singleton`, the item and its registration are treated as immutable.
 
