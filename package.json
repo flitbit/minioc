@@ -5,7 +5,6 @@
 	"description": "A miniature, conventions-based IOC implementation for nodejs.",
 	"keywords": ["ioc", "container", "dependency", "injection", "di"],
 	"main": "index.js",
-	"keywords": ["injection", "container", "dependency", "ioc", "di"],
 	"directories": {
 		"example": "examples",
 		"test": "test"
