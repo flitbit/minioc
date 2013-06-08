@@ -9,7 +9,7 @@ After using [angularjs](http://angularjs.org/) for a while I became envious of i
 
 ## Brief
 
-`minioc` supports 3 types of registrations, _bald values_, _factories_, and _ctors_. 
+`minioc` supports 3 types of registrations, _bald values_, _factories_, and _ctors_.
 
 type | description
 --- | ---
@@ -17,11 +17,11 @@ bare value | Any javascript object (string, number, function, etc.).
 factory | A function that produces values.
 ctor | A class, intended to be called with the `new` operator.
 
-`minioc` follows a simple convention when resolving: if the target is a function, the container will inject arguments that begins with a dollar sign `$` such as '$people'. All other arguments are left alone unless provided by the caller. 
+`minioc` follows a simple convention when resolving: if the target is a function, the container will inject arguments that begins with a dollar sign `$` such as '$people'. All other arguments are left alone unless provided by the caller.
 
 ## Features
 
-[*] [Register bald values](#bald-values)
+[*] [Register bare values](#bald-values)
 [*] [Registering factories](#factories)
 [*] [Registering classes](#classes)
 [*] [Constructor injection](#injection)
@@ -32,6 +32,7 @@ ctor | A class, intended to be called with the `new` operator.
 [node.js](http://nodejs.org)
 ```bash
 $ npm install minioc
+```
 
 ## Example
 
@@ -64,7 +65,7 @@ expect(minioc.get('$foo')).to.be(foo);
 // the factory and return the result...
 
 var factory = function() {
-	// within factories, `this` is bound to the container... 
+	// within factories, `this` is bound to the container...
 	return this.get('$foo');
 };
 
@@ -74,7 +75,7 @@ expect(minioc.get('$factory')).to.be(foo);
 // You can register factories that take arguments you
 // expect to be injected, I adopted the convention
 // used by angularjs: arguments beginning with `$`
-// will be fulfilled by the container... 
+// will be fulfilled by the container...
 
 var accessor = function($foo) {
 	return $foo;
@@ -121,7 +122,7 @@ expect(me.age).to.be(info.age);
 
 ### `minioc`
 
-When you import the `minioc` module, the resulting object is a constructor for the Container class, but it also provides several convenience methods that can be used directly. 
+When you import the `minioc` module, the resulting object is a constructor for the Container class, but it also provides several convenience methods that can be used directly.
 
 * `create` - _function_ - creates a new nested container.
 * `get` - _function_ - gets an item according to its registration with the root container.

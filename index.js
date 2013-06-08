@@ -106,7 +106,7 @@ function Registration(name, container) {
 function prepareArguments(deps, args, offset, init) {
 	var len = deps.length
 	, i = -1
-	, res = args.slice(0) 
+	, res = args.slice(0)
 	, name
 	;
 	while(++i < len) {
@@ -164,6 +164,7 @@ Object.defineProperties(Registration.prototype, {
 			this.notify(callback, init);
 		},
 		enumerable: true,
+		writable: true
 	},
 
 	get:
@@ -171,7 +172,8 @@ Object.defineProperties(Registration.prototype, {
 		value: function(init)
 		{
 		},
-		enumerable: true
+		enumerable: true,
+		writable: true
 	},
 
 	set:
@@ -230,7 +232,7 @@ Object.defineProperties(Registration.prototype, {
 			var i = -1
 			, len = deps.length
 			, dep
-			;	
+			;
 			while(++i < len) {
 				dep = deps[i];
 				if (dep.kind === 'd') {
@@ -287,7 +289,7 @@ Object.defineProperties(Registration.prototype, {
 			}
 			;
 			if (this.has()) {
-				if (typeof this._val !== 'undefined') { 
+				if (typeof this._val !== 'undefined') {
 					if (this.isSingleton) {
 						throw new Error('Invalid operation; singleton `'
 							.concat(this.name, '` cannot be re-assigned'));
@@ -339,7 +341,7 @@ Object.defineProperties(Registration.prototype, {
 			}
 			;
 			if (this.has()) {
-				if (typeof this._val !== 'undefined') { 
+				if (typeof this._val !== 'undefined') {
 					if (this.isSingleton) {
 						throw new Error('Invalid operation; singleton `'
 							.concat(this.name, '` cannot be re-assigned'));
@@ -385,10 +387,13 @@ Object.defineProperties(Container.prototype, {
 	has: {
 		value: function(what) {
 			if (typeof what !== 'undefined') {
-				var c = this;
+				var c = this
+				, r
+				;
 				while(c) {
-					if (c._reg.hasOwnProperty(what)) {
-						return c._reg[what].has();
+					r = c._reg;
+					if (r.hasOwnProperty(what)) {
+						return r[what].has();
 					} else {
 						c = c._next;
 					}
@@ -494,7 +499,7 @@ Object.defineProperties(Container, {
 
 	has: {
 		value: function(what) {
-			return $root.get().get(what);
+			return $root.get().has(what);
 		},
 		enumerable: true
 	},
