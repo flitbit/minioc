@@ -3,6 +3,8 @@ minioc (alpha) [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http:
 
 A miniature, conventions-based IOC implementation for nodejs.
 
+!! This document is a work in progress.
+
 ## Background
 
 After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience.
@@ -18,14 +20,6 @@ factory | A function that produces values.
 ctor | A class, intended to be called with the `new` operator.
 
 `minioc` follows a simple convention when resolving: if the target is a function, the container will inject arguments that begins with a dollar sign `$` such as '$people'. All other arguments are left alone unless provided by the caller.
-
-## Features
-
-[*] [Register bare values](#bald-values)
-[*] [Registering factories](#factories)
-[*] [Registering classes](#classes)
-[*] [Constructor injection](#injection)
-[*] [Singletons](#singletons)
 
 ## Installation
 
@@ -91,7 +85,7 @@ var bar = { what: 'bar' };
 var it = minioc.get('$accessor', { $foo: bar });
 expect(it).to.be(bar);
 
-// You can register classes, each #get will invoke the
+// You can register classes; each #get will invoke the
 // constructor and return the result...
 
 function Person(name, age) {
@@ -116,6 +110,20 @@ var me = minioc.get('Person', info);
 
 expect(me.name).to.be(info.name);
 expect(me.age).to.be(info.age);
+```
+<a href="#tests">$nbsp</a>
+## Tests
+
+Tests use [mocha](http://visionmedia.github.io/mocha/) and [expect.js](https://github.com/LearnBoost/expect.js/), so if you clone the [github repository](https://github.com/flitbit/minioc) you'll need to run:
+
+```bash
+npm install
+```
+
+... followed by ...
+
+```bash
+npm test
 ```
 
 ## API

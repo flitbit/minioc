@@ -25,7 +25,7 @@ expect(minioc.get('$foo')).to.be(foo);
 // the factory and return the result...
 
 var factory = function() {
-	// within factories, `this` is bound to the container... 
+	// within factories, `this` is bound to the container...
 	return this.get('$foo');
 };
 
@@ -35,7 +35,7 @@ expect(minioc.get('$factory')).to.be(foo);
 // You can register factories that take arguments you
 // expect to be injected, I adopted the convention
 // used by angularjs: arguments beginning with `$`
-// will be fulfilled by the container... 
+// will be fulfilled by the container...
 
 var accessor = function($foo) {
 	return $foo;
@@ -51,7 +51,7 @@ var bar = { what: 'bar' };
 var it = minioc.get('$accessor', { $foo: bar });
 expect(it).to.be(bar);
 
-// You can register classes, each #get will invoke the
+// You can register classes; each #get will invoke the
 // constructor and return the result...
 
 function Person(name, age) {

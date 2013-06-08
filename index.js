@@ -4,15 +4,6 @@ var FN_ARGS = /^function\s*[^\(]*\(\s*([^\)]*)\)/m
 , STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg
 ;
 
-function As(reg) {
-	Object.defineProperties(this, {
-		registration: {
-			value: reg,
-			enumerable: true
-		}
-	});
-}
-
 function extractDependenciesFrom(fn, dependencies, options) {
 	if (fn.length) {
 		var options = options || {};
@@ -33,11 +24,20 @@ function extractDependenciesFrom(fn, dependencies, options) {
 	}
 }
 
+function As(reg) {
+	Object.defineProperties(this, {
+		registration: {
+			value: reg,
+			enumerable: true
+		}
+	});
+}
+
 Object.defineProperties(As.prototype, {
 	value: {
 		value: function(val) {
 			var reg = this.registration;
-			reg.setValue(val, this.singleton_intent);
+			reg.setValue(val, this);
 			return reg;
 		},
 		enumerable: true
@@ -48,12 +48,10 @@ Object.defineProperties(As.prototype, {
 			var reg = this.registration;
 			if (typeof factory === 'function') {
 				var dependencies = [];
-				if (!factory.length) {
-					reg.setValue(factory.apply(reg.container), this.singleton_intent);
-				} else {
+				if (factory.length) {
 					extractDependenciesFrom(factory, dependencies, options);
 				}
-				reg.setFactory(factory, dependencies, this.singleton_intent);
+				reg.setFactory(factory, dependencies, this);
 			} else {
 				throw new TypeError('Invalid argument; factory must be a factory function.');
 			}
@@ -68,7 +66,7 @@ Object.defineProperties(As.prototype, {
 			if (typeof clazz === 'function') {
 				var dependencies = [];
 				extractDependenciesFrom(clazz, dependencies, options);
-				reg.setClass(clazz, dependencies, this.singleton_intent);
+				reg.setClass(clazz, dependencies, this);
 			} else {
 				throw new TypeError('Invalid argument; clazz must be a factory function.');
 			}
@@ -80,6 +78,14 @@ Object.defineProperties(As.prototype, {
 	singleton: {
 		get: function() {
 			this.singleton_intent = true;
+			return this;
+		},
+		enumerable: true
+	},
+
+	from: {
+		get: function() {
+			this.value_intent = true;
 			return this;
 		},
 		enumerable: true
@@ -122,8 +128,18 @@ Object.defineProperties(Registration.prototype, {
 	as: {
 		get: function() {
 			return new As(this);
-		}
+		},
+		enumerable: true
 	},
+
+	from: {
+		get: function() {
+			var as = new As(this);
+			return as.from;
+		},
+		enumerable: true
+	},
+
 
 	notify:
 	{
@@ -176,24 +192,8 @@ Object.defineProperties(Registration.prototype, {
 		writable: true
 	},
 
-	set:
-	{
-		value: function(val, isFactory) {
-			if (typeof this._val !== 'undefined' && this.isSingleton) {
-				throw new Error('Invalid operation; singleton `'
-					.concat(this.name, '` cannot be re-assigned'));
-			}
-			Object.defineProperties(this, {
-				_val: { value: val },
-				_isFactory: { value: isFactory && typeof val === "function" }
-			});
-			this.notify();
-			return (isFactory) ? val() : val;
-		}
-	},
-
 	setValue: {
-		value: function(val, singleton_intent) {
+		value: function(val, as) {
 			if (typeof this._val !== 'undefined' && this.isSingleton) {
 				throw new Error('Invalid operation; singleton `'
 					.concat(this.name, '` cannot be re-assigned'));
@@ -201,7 +201,7 @@ Object.defineProperties(Registration.prototype, {
 			this.get = function() { return val; };
 			this.when = function(callback) { callback(val); };
 			Object.defineProperty(this, '_val', { value: true, writable: true, configurable: true });
-			if (singleton_intent && !this.isSingleton) {
+			if (as.singleton_intent && !this.isSingleton) {
 				Object.defineProperty(this, 'isSingleton', {
 					value: true,
 					enumerable: true,
@@ -245,31 +245,28 @@ Object.defineProperties(Registration.prototype, {
 		}
 	},
 
+	checkAssignable: {
+		value: function() {
+			if (this.isSingleton && typeof this._val !== 'undefined') {
+				throw new Error('Invalid operation; singleton `'
+					.concat(this.name, '` cannot be assigned'));
+			}
+		},
+		enumerable: true
+	},
+
 	setFactory: {
-		value: function(factory, deps, singleton_intent) {
+		value: function(factory, deps, as) {
 			var self = this
 			, finish = function() {
-				var args, single;
+				var args, single, val;
 				if (!self.has()) {
 					if (self.canSatisfyArguments(self.container, deps)) {
 						args = self.satisfyArguments(self.container, deps, []);
-						if (self.isSingleton) {
-							self.get = function(init) {
-								if (!single) {
-									var prepared = (typeof init !== 'undefined')
-									? prepareArguments(deps, args, 0, init) : args;
-									single = factory.apply(self.container, prepared);
-								}
-								return single;
-							};
-							self.when = function(cb, init) {
-								if (!single) {
-									var prepared = (typeof init !== 'undefined')
-									? prepareArguments(deps, args, 0, init) : args;
-									single = factory.apply(self.container, prepared);
-								}
-								cb(single);
-							};
+						if (as.value_intent) {
+							val = factory.apply(self.container, args);
+							self.get = function() { return val; };
+							self.when = function(callback) { callback(val); };
 						} else {
 							self.get = function(init) {
 								var prepared = (typeof init !== 'undefined')
@@ -290,20 +287,17 @@ Object.defineProperties(Registration.prototype, {
 			;
 			if (this.has()) {
 				if (typeof this._val !== 'undefined') {
-					if (this.isSingleton) {
-						throw new Error('Invalid operation; singleton `'
-							.concat(this.name, '` cannot be re-assigned'));
-					}
+					this.checkAssignable();
 					delete this._val;
 				}
 				this.get = Registration.prototype.get;
 				this.when = Registration.prototype.when;
-				if (singleton_intent && !this.isSingleton) {
-					Object.defineProperty(this, 'isSingleton', {
-						value: true,
-						enumerable: true,
-					});
-				}
+			}
+			if (as.singleton_intent && !this.isSingleton) {
+				Object.defineProperty(this, 'isSingleton', {
+					value: true,
+					enumerable: true,
+				});
 			}
 			deps.forEach(function (d) {
 				if (d.kind === 'd') {
@@ -315,25 +309,31 @@ Object.defineProperties(Registration.prototype, {
 	},
 
 	setClass: {
-		value: function(clazz, deps, singleton_intent) {
+		value: function(clazz, deps, as) {
 			var self = this
 			, finish = function() {
-				var args, ctor;
+				var args, ctor, val;
 				if (!self.has()) {
 					if (self.canSatisfyArguments(self.container, deps)) {
 						args = self.satisfyArguments(self.container, deps, [null]);
-						self.get = function(init) {
-							var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
-							ctor = Function.prototype.bind.apply(clazz, prepared)
-							;
-							return new (ctor);
-						};
-						self.when = function(cb, init) {
-							var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
-							, ctor = Function.prototype.bind.apply(clazz, prepared)
-							;
-							cb(new (ctor));
-						};
+						if (as.value_intent) {
+							val = new (Function.prototype.bind.apply(clazz, args));
+							self.get = function() { return val; };
+							self.when = function(callback) { callback(val); };
+						} else {
+							self.get = function(init) {
+								var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
+								ctor = Function.prototype.bind.apply(clazz, prepared)
+								;
+								return new (ctor);
+							};
+							self.when = function(cb, init) {
+								var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
+								, ctor = Function.prototype.bind.apply(clazz, prepared)
+								;
+								cb(new (ctor));
+							};
+						}
 						Object.defineProperty(self, '_val', { value: true, writable: true, configurable: true });
 						self.notify();
 					}
@@ -342,20 +342,17 @@ Object.defineProperties(Registration.prototype, {
 			;
 			if (this.has()) {
 				if (typeof this._val !== 'undefined') {
-					if (this.isSingleton) {
-						throw new Error('Invalid operation; singleton `'
-							.concat(this.name, '` cannot be re-assigned'));
-					}
+					this.checkAssignable();
 					delete this._val;
 				}
 				this.get = Registration.prototype.get;
 				this.when = Registration.prototype.when;
-				if (singleton_intent && !this.isSingleton) {
-					Object.defineProperty(this, 'isSingleton', {
-						value: true,
-						enumerable: true,
-					});
-				}
+			}
+			if (as.singleton_intent && !this.isSingleton) {
+				Object.defineProperty(this, 'isSingleton', {
+					value: true,
+					enumerable: true,
+				});
 			}
 			deps.forEach(function (d) {
 				if (d.kind === 'd') {
@@ -367,18 +364,18 @@ Object.defineProperties(Registration.prototype, {
 	}
 });
 
-var $root = new Registration('$root');
+var __root, __rootRef = new Registration('$root');
 
 function Container(next, tenant) {
 	var reg = {};
 	var me = new Registration('$container').as.singleton.value(this);
 	Object.defineProperties(reg, {
-		$root: { value: $root, enumerable: true },
+		$root : { value: __rootRef, enumerable: true },
 		$container: { value: me, enumerable: true }
 	});
 	Object.defineProperties(this, {
 		_reg: { value: reg },
-		_next: { value: next || $root.get() }
+		_next: { value: next || __root }
 	});
 }
 
@@ -475,18 +472,32 @@ Object.defineProperties(Container.prototype, {
 			}
 		},
 		enumerable: true
+	},
+
+	unregister: {
+		value: function(what) {
+			var reg = this._reg
+				, current = reg[what]
+				;
+			if (current) {
+				current.checkAssignable();
+				delete this._reg[what];
+				return true;
+			}
+			return false;
+		},
+		enumerable: true
 	}
 
 });
 
-$root.as.singleton.value(new Container());
+__root = new Container();
+__rootRef.as.singleton.value(__root);
 
 Object.defineProperties(Container, {
 
 	root: {
-		get: function() {
-			return $root.get();
-		},
+		value: __root,
 		enumerable: true
 	},
 
@@ -499,29 +510,37 @@ Object.defineProperties(Container, {
 
 	has: {
 		value: function(what) {
-			return $root.get().has(what);
+			return __root.has(what);
 		},
 		enumerable: true
 	},
 
 	when: {
 		value: function(what, callback, init) {
-			return $root.get().when(what, callback, init);
+			return __root.when(what, callback, init);
 		},
 		enumerable: true
 	},
 
 	get: {
 		value: function(what, init) {
-			return $root.get().get(what, init);
+			return __root.get(what, init);
 		},
 		enumerable: true
 	},
 
 	register: {
 		value: function(it, val) {
-			return $root.get().register(it, val);
-		}
+			return __root.register(it, val);
+		},
+		enumerable: true
+	},
+
+	unregister: {
+		value: function(what) {
+			return __root.unregister(what);
+		},
+		enumerable: true
 	}
 });
 Container.Registration = Registration;
