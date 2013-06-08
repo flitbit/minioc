@@ -3,8 +3,6 @@ minioc (alpha) [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http:
 
 A miniature, conventions-based IOC implementation for nodejs.
 
-!! This document is a work in progress.
-
 ## Background
 
 After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience.
@@ -19,7 +17,22 @@ bare value | Any javascript object (string, number, function, etc.).
 factory | A function that produces values.
 ctor | A class, intended to be called with the `new` operator.
 
-`minioc` follows a simple convention when resolving: if the target is a function, the container will inject arguments that begins with a dollar sign `$` such as '$people'. All other arguments are left alone unless provided by the caller.
+**Injection**
+When working with functions, including constructors, `minioc` will attempt to resolve any named argument beginning with a dollar sign `$`.
+
+This means that if you register a service, say `$people`, and a factory like the following:
+
+```javascript
+var findr = function($people, options) {
+
+	// do something with $people...
+
+};
+
+minioc.register('$findr').as.factory(findr);
+```
+
+`minioc` will `#get` the _$people_ object from the container and inject it each time the _$findr_ factory is invoked. In contrast, the other argument (_options_) must be supplied by the caller or will remain undefined.
 
 ## Installation
 
