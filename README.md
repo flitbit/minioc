@@ -18,6 +18,7 @@ factory | A function that produces values.
 ctor | A class, intended to be called with the `new` operator.
 
 **Injection**
+
 When working with functions, including constructors, `minioc` will attempt to resolve any named argument beginning with a dollar sign `$`.
 
 This means that if you register a service, say `$people`, and a factory like the following:
@@ -32,7 +33,7 @@ var findr = function($people, options) {
 minioc.register('$findr').as.factory(findr);
 ```
 
-`minioc` will `#get` the _$people_ object from the container and inject it each time the _$findr_ factory is invoked. In contrast, the other argument (_options_) must be supplied by the caller or will remain undefined.
+`minioc` will `#get` the `$people` object from the container and inject it each time invokes the `$findr` factory. In contrast, the other argument (_options_) must be supplied by the caller or will remain undefined.
 
 ## Installation
 
