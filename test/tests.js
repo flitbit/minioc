@@ -32,11 +32,11 @@ describe("Minioc", function() {
 				expect(root.get('$test')).to.be(); // undefined
 			});
 
-			it('#get(callback) with non-existent $test resolves undefined', function() {
-				expect(root.get('$test', function(eventual) {
+			it('#when(callback) with non-existent $test resolves undefined', function() {
+				root.when('$test', function(eventual) {
 					expect(captured).to.be(); // undefined
 					captured = eventual;
-				})).to.be();
+				});
 				expect(captured).to.be(); // undefined
 			});
 

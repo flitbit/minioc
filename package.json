@@ -1,8 +1,9 @@
 {
 	"name": "minioc",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"author": "Phillip Clark <phillip@flitbit.com>",
-  "description": "A miniature, conventions-based IOC implementation for nodejs.",
+	"description": "A miniature, conventions-based IOC implementation for nodejs.",
+	"keywords": ["ioc", "container", "dependency", "injection", "di"],
 	"main": "index.js",
 	"directories": {
 		"example": "examples",
@@ -12,7 +13,6 @@
 		"test": "mocha -R spec"
 	},
 	"dependencies": {
-		"futr": "~0.1.x"
 	 },
 	"devDependencies": {
 			"expect.js": "~0.2.x",

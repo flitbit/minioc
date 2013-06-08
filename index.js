@@ -1,22 +1,36 @@
 "use strict";
 
-var Future = require('futr')
-;
-
-var $root = new Future()
-, FN_ARGS = /^function\s*[^\(]*\(\s*([^\)]*)\)/m
+var FN_ARGS = /^function\s*[^\(]*\(\s*([^\)]*)\)/m
 , STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg
 ;
 
-
 function As(reg) {
-
 	Object.defineProperties(this, {
 		registration: {
 			value: reg,
 			enumerable: true
 		}
 	});
+}
+
+function extractDependenciesFrom(fn, dependencies, options) {
+	if (fn.length) {
+		var options = options || {};
+		var deps = fn.toString().replace(STRIP_COMMENTS,"").match(FN_ARGS)[1].split(',')
+		, i = -1
+		, len = deps.length
+		;
+		while(++i < len) {
+			var dep = deps[i].trim();
+			if (options.hasOwnProperty(dep)) {
+				dependencies.push({ kind: 'u', name: dep, value: options[dep] });
+			} else if (dep.length && dep[0] === '$') {
+				dependencies.push({ kind: 'd', name: dep });
+			} else {
+				dependencies.push({ kind: 'm', name: dep, value: undefined });
+			}
+		}
+	}
 }
 
 Object.defineProperties(As.prototype, {
@@ -33,54 +47,32 @@ Object.defineProperties(As.prototype, {
 		value: function(factory, options) {
 			var reg = this.registration;
 			if (typeof factory === 'function') {
-					if (!factory.length) {
-						reg.setValue(factory.apply(reg.container), this.singleton_intent);
-					} else {
-						options = options || {};
-						var deps = factory.toString().replace(STRIP_COMMENTS,"").match(FN_ARGS)[1].split(',')
-						, dependencies = []
-						, i = -1
-						, len = deps.length
-						;
-						while(++i < len) {
-							var dep = deps[i].trim();
-							if (options.hasOwnProperty(dep)) {
-								dependencies.push({ kind: 'u', value: options[dep] });
-							} else {
-								dependencies.push({ kind: 'd', dep: dep});
-							}
-						}
-					}
-					reg.setFactory(factory, dependencies, this.singleton_intent);
+				var dependencies = [];
+				if (!factory.length) {
+					reg.setValue(factory.apply(reg.container), this.singleton_intent);
 				} else {
-					throw new TypeError('Invalid argument; factory must be a factory function.');
+					extractDependenciesFrom(factory, dependencies, options);
 				}
-			},
-			enumerable: true
+				reg.setFactory(factory, dependencies, this.singleton_intent);
+			} else {
+				throw new TypeError('Invalid argument; factory must be a factory function.');
+			}
+			return reg;
 		},
+		enumerable: true
+	},
 
-		ctor: {
-			value: function(clazz, options) {
-				var reg = this.registration;
-				if (typeof clazz === 'function') {
-					options = options || {};
-					var deps = clazz.toString().replace(STRIP_COMMENTS,"").match(FN_ARGS)[1].split(',')
-					, dependencies = []
-					, i = -1
-					, len = deps.length
-					;
-					while(++i < len) {
-						var dep = deps[i].trim();
-						if (options.hasOwnProperty(dep)) {
-							dependencies.push({ kind: 'u', value: options[dep] });
-						} else {
-							dependencies.push({ kind: 'd', dep: dep});
-						}
-					}
+	ctor: {
+		value: function(clazz, options) {
+			var reg = this.registration;
+			if (typeof clazz === 'function') {
+				var dependencies = [];
+				extractDependenciesFrom(clazz, dependencies, options);
 				reg.setClass(clazz, dependencies, this.singleton_intent);
 			} else {
 				throw new TypeError('Invalid argument; clazz must be a factory function.');
 			}
+			return reg;
 		},
 		enumerable: true
 	},
@@ -107,17 +99,23 @@ function Registration(name, container) {
 			enumerable: true
 		},
 
-		_futr: {
-			value: new Future(),
-			writable: true
-		},
-
-		_callbacks: {
-			get: function() {
-				return this._futr._callbacks;
-			}
-		}
+		_callbacks: { value: [] }
 	});
+}
+
+function prepareArguments(deps, args, offset, init) {
+	var len = deps.length
+	, i = -1
+	, res = args.slice(0) 
+	, name
+	;
+	while(++i < len) {
+		name = deps[i].name;
+		if (init.hasOwnProperty(name)) {
+			res[i + offset] = init[name];
+		}
+	}
+	return res;
 }
 
 Object.defineProperties(Registration.prototype, {
@@ -127,56 +125,87 @@ Object.defineProperties(Registration.prototype, {
 		}
 	},
 
-	get: {
-		value: function(callback) {
-			return this._futr.get(callback);
-		},
-		enumerable: true
+	notify:
+	{
+		value: function(callback, init) {
+			if (callback) {
+				if (typeof val !== 'undefined') {
+					callback(this.get(init));
+				} else {
+					this._callbacks.push(callback);
+				}
+			} else {
+				var callbacks = this._callbacks
+				, len = (callbacks) ? callbacks.length : 0
+				, i = -1
+				, val = this._val
+				, isFactory = this._isFactory
+				;
+				while(++i < len) {
+					callbacks[i](this.get(init));
+				}
+				this._callbacks.length = 0;
+			}
+		}
 	},
 
-	set: {
-		value: function(val) {
-			return this._futr.set(val);
-		},
-		enumerable: true
-	},
-
-	has: {
+	has:
+	{
 		value: function() {
-			return this._futr.has();
+			return typeof this._val !== 'undefined';
 		},
 		enumerable: true
 	},
 
-	notify: {
-		value: function(callback) {
-			this._futr.notify(callback);
+	when:
+	{
+		value: function(callback, init)
+		{
+			this.notify(callback, init);
+		},
+		enumerable: true,
+	},
+
+	get:
+	{
+		value: function(init)
+		{
 		},
 		enumerable: true
+	},
+
+	set:
+	{
+		value: function(val, isFactory) {
+			if (typeof this._val !== 'undefined' && this.isSingleton) {
+				throw new Error('Invalid operation; singleton `'
+					.concat(this.name, '` cannot be re-assigned'));
+			}
+			Object.defineProperties(this, {
+				_val: { value: val },
+				_isFactory: { value: isFactory && typeof val === "function" }
+			});
+			this.notify();
+			return (isFactory) ? val() : val;
+		}
 	},
 
 	setValue: {
 		value: function(val, singleton_intent) {
-			var f = this._futr
-			, waiters
-			;
-			if (f.has(this.container)) {
-				if (this.isSingleton) {
-					throw new Error('Invalid operation; singleton `'
-						.concat(this.name, '` cannot be re-assigned'));
-				}
-				waiters = f._callbacks;
-				this._futr = f = new Future(val);
-				waiters.forEach(function(cb) { f.notify(cb); });
-			} else {
-				f.set(val);
+			if (typeof this._val !== 'undefined' && this.isSingleton) {
+				throw new Error('Invalid operation; singleton `'
+					.concat(this.name, '` cannot be re-assigned'));
 			}
+			this.get = function() { return val; };
+			this.when = function(callback) { callback(val); };
+			Object.defineProperty(this, '_val', { value: true, writable: true, configurable: true });
 			if (singleton_intent && !this.isSingleton) {
 				Object.defineProperty(this, 'isSingleton', {
 					value: true,
 					enumerable: true,
 				});
 			}
+			this.notify();
 		}
 	},
 
@@ -188,7 +217,7 @@ Object.defineProperties(Registration.prototype, {
 			;
 			while(++i < len) {
 				dep = deps[i];
-				if (dep.kind === 'd' && !container.has(dep.dep)) {
+				if (dep.kind === 'd' && !container.has(dep.name)) {
 					return false;
 				}
 			}
@@ -201,11 +230,11 @@ Object.defineProperties(Registration.prototype, {
 			var i = -1
 			, len = deps.length
 			, dep
-			;
+			;	
 			while(++i < len) {
 				dep = deps[i];
 				if (dep.kind === 'd') {
-					args.push(container.get(dep.dep));
+					args.push(container.get(dep.name));
 				} else {
 					args.push(dep.value);
 				}
@@ -216,39 +245,57 @@ Object.defineProperties(Registration.prototype, {
 
 	setFactory: {
 		value: function(factory, deps, singleton_intent) {
-			var f = this._futr
-			, waiters
-			, self = this
+			var self = this
 			, finish = function() {
 				var args, single;
-				if (!f.has()) {
+				if (!self.has()) {
 					if (self.canSatisfyArguments(self.container, deps)) {
 						args = self.satisfyArguments(self.container, deps, []);
 						if (self.isSingleton) {
-							f.set(function() {
+							self.get = function(init) {
 								if (!single) {
-									single = factory.apply(self.container, args);
+									var prepared = (typeof init !== 'undefined')
+									? prepareArguments(deps, args, 0, init) : args;
+									single = factory.apply(self.container, prepared);
 								}
 								return single;
-							}, true);
+							};
+							self.when = function(cb, init) {
+								if (!single) {
+									var prepared = (typeof init !== 'undefined')
+									? prepareArguments(deps, args, 0, init) : args;
+									single = factory.apply(self.container, prepared);
+								}
+								cb(single);
+							};
 						} else {
-							f.set(function() {
-								return factory.apply(self.container, args);
-							}, true);
+							self.get = function(init) {
+								var prepared = (typeof init !== 'undefined')
+								? prepareArguments(deps, args, 0, init) : args;
+								return factory.apply(self.container, prepared);
+							};
+							self.when = function(cb, init) {
+								var prepared = (typeof init !== 'undefined')
+								? prepareArguments(deps, args, 0, init) : args;
+								cb(factory.apply(self.container, prepared));
+							}
 						}
+						Object.defineProperty(self, '_val', { value: true, writable: true, configurable: true });
+						self.notify();
 					}
 				}
 			}
 			;
-			if (f.has(this.container)) {
-				if (this.isSingleton) {
-					throw new Error('Invalid operation; singleton `'
-						.concat(this.name, '` cannot be re-assigned'));
+			if (this.has()) {
+				if (typeof this._val !== 'undefined') { 
+					if (this.isSingleton) {
+						throw new Error('Invalid operation; singleton `'
+							.concat(this.name, '` cannot be re-assigned'));
+					}
+					delete this._val;
 				}
-				waiters = f._callbacks;
-				this._futr = f = new Future(val);
-				waiters.forEach(function(cb) { f.notify(cb); });
-
+				this.get = Registration.prototype.get;
+				this.when = Registration.prototype.when;
 				if (singleton_intent && !this.isSingleton) {
 					Object.defineProperty(this, 'isSingleton', {
 						value: true,
@@ -258,7 +305,7 @@ Object.defineProperties(Registration.prototype, {
 			}
 			deps.forEach(function (d) {
 				if (d.kind === 'd') {
-					self.container.get(d.dep, finish);
+					self.container.when(d.name, finish);
 				}
 			});
 			finish();
@@ -267,31 +314,40 @@ Object.defineProperties(Registration.prototype, {
 
 	setClass: {
 		value: function(clazz, deps, singleton_intent) {
-			var f = this._futr
-			, waiters
-			, self = this
+			var self = this
 			, finish = function() {
 				var args, ctor;
-				if (!f.has()) {
+				if (!self.has()) {
 					if (self.canSatisfyArguments(self.container, deps)) {
 						args = self.satisfyArguments(self.container, deps, [null]);
-						ctor = Function.prototype.bind.apply(clazz, args);
-						f.set(function() {
+						self.get = function(init) {
+							var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
+							ctor = Function.prototype.bind.apply(clazz, prepared)
+							;
 							return new (ctor);
-						}, true);
+						};
+						self.when = function(cb, init) {
+							var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
+							, ctor = Function.prototype.bind.apply(clazz, prepared)
+							;
+							cb(new (ctor));
+						};
+						Object.defineProperty(self, '_val', { value: true, writable: true, configurable: true });
+						self.notify();
 					}
 				}
 			}
 			;
-			if (f.has(this.container)) {
-				if (this.isSingleton) {
-					throw new Error('Invalid operation; singleton `'
-						.concat(this.name, '` cannot be re-assigned'));
+			if (this.has()) {
+				if (typeof this._val !== 'undefined') { 
+					if (this.isSingleton) {
+						throw new Error('Invalid operation; singleton `'
+							.concat(this.name, '` cannot be re-assigned'));
+					}
+					delete this._val;
 				}
-				waiters = f._callbacks;
-				this._futr = f = new Future(val);
-				waiters.forEach(function(cb) { f.notify(cb); });
-
+				this.get = Registration.prototype.get;
+				this.when = Registration.prototype.when;
 				if (singleton_intent && !this.isSingleton) {
 					Object.defineProperty(this, 'isSingleton', {
 						value: true,
@@ -301,18 +357,22 @@ Object.defineProperties(Registration.prototype, {
 			}
 			deps.forEach(function (d) {
 				if (d.kind === 'd') {
-					self.container.get(d.dep, finish);
+					self.container.when(d.name, finish);
 				}
 			});
 			finish();
-		}	},
+		}
+	}
 });
+
+var $root = new Registration('$root');
 
 function Container(next, tenant) {
 	var reg = {};
+	var me = new Registration('$container').as.singleton.value(this);
 	Object.defineProperties(reg, {
 		$root: { value: $root, enumerable: true },
-		$container: { value: new Future(this), enumerable: true }
+		$container: { value: me, enumerable: true }
 	});
 	Object.defineProperties(this, {
 		_reg: { value: reg },
@@ -320,43 +380,7 @@ function Container(next, tenant) {
 	});
 }
 
-function defaultEnsureFuture(current) {
-	var waiters;
-	if (current) {
-		if (current instanceof Future && !current.has()) return current;
-		if (current._callbacks && current._callbacks.length) {
-				wiaters = current._callbacks;
-		}
-	}
-	var res = new Future();
-	if (waiters) {
-		waiters.forEach(function(cb) {
-			res.notify(cb);
-		});
-	}
-	return res;
-}
-
 Object.defineProperties(Container.prototype, {
-
-	ensure: {
-		value: function(what, ctor) {
-			var replace
-			, reg = this._reg
-			, current = reg[what]
-			;
-			if (current && current instanceof Singleton && current.has(this)) {
-				throw Error('Invalid operation: singletons cannot be replaced once they have been created.');
-			}
-			replace = ctor(current);
-			if (typeof replace === 'undefined') {
-				delete reg[what];
-			} else {
-				reg[what] = replace;
-			}
-			return replace
-		}
-	},
 
 	has: {
 		value: function(what) {
@@ -375,19 +399,36 @@ Object.defineProperties(Container.prototype, {
 		enumerable: true
 	},
 
-	get: {
-		value: function(what, callback) {
-			if (typeof what !== 'undefined') {
+	when: {
+		value: function(what, callback, init) {
+			if (typeof what !== 'undefined' && typeof callback === 'function') {
 				var f, c = this;
 				while(c) {
 					if (c._reg.hasOwnProperty(what)) {
-						return c._reg[what].get(callback);
+						return c._reg[what].when(callback, init);
 					} else {
 						c = c._next;
 					}
 				}
 				this._reg[what] = f = new Registration(what, this);
-				return f.get(callback);
+				f.when(callback, init);
+			}
+		},
+		enumerable: true
+	},
+
+	get: {
+		value: function(what, init) {
+			if (typeof what !== 'undefined') {
+				var f, c = this;
+				while(c) {
+					if (c._reg.hasOwnProperty(what)) {
+						return c._reg[what].get(init);
+					} else {
+						c = c._next;
+					}
+				}
+				this._reg[what] = f = new Registration(what, this);
 			}
 		},
 		enumerable: true
@@ -415,8 +456,11 @@ Object.defineProperties(Container.prototype, {
 				if (!current) {
 					reg[name] = current = new Registration(name, this);
 					if (fn) {
-						current.as.ctor(it);
-						return current;
+						if (it.name) {
+							current.as.ctor(it);
+						} else {
+							current.as.factory(it);
+						}
 					}
 				}
 				if (typeof val !== 'undefined' && typeof val !== 'function') {
@@ -430,20 +474,49 @@ Object.defineProperties(Container.prototype, {
 
 });
 
-$root.set(new Container());
+$root.as.singleton.value(new Container());
 
 Object.defineProperties(Container, {
+
 	root: {
 		get: function() {
 			return $root.get();
 		},
 		enumerable: true
 	},
+
 	create: {
 		value: function(next) {
 			return new Container(next);
 		},
 		enumerable: true
+	},
+
+	has: {
+		value: function(what) {
+			return $root.get().get(what);
+		},
+		enumerable: true
+	},
+
+	when: {
+		value: function(what, callback, init) {
+			return $root.get().when(what, callback, init);
+		},
+		enumerable: true
+	},
+
+	get: {
+		value: function(what, init) {
+			return $root.get().get(what, init);
+		},
+		enumerable: true
+	},
+
+	register: {
+		value: function(it, val) {
+			return $root.get().register(it, val);
+		}
 	}
 });
 Container.Registration = Registration;
