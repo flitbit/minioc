@@ -35,6 +35,18 @@ describe("Minioc", function() {
 			expect(minioc.get('$container')).to.be(root);
 		});
 
+		it('#register with $container fails because the container is a self-reference', function() {
+			expect(function() {
+				minioc.register('$container');
+			}).to.throwError();
+		});
+
+		it('#register with $root fails because the root is immutable', function() {
+			expect(function() {
+				minioc.register('$root');
+			}).to.throwError();
+		});
+
 		describe('an item that is not registered', function() {
 			var observed, unk = { says: 'Yay!' };
 
@@ -72,43 +84,6 @@ describe("Minioc", function() {
 				expect(ours).to.be(unk);
 			});
 
-		});
-		it('#has returns false for undefined $test', function() {
-			expect(minioc.has('$test')).to.be(false);
-		});
-
-		it('#get with undefined $test resolves undefined', function() {
-			expect(minioc.get('$test')).to.be();
-		});
-
-		it('#when(callback) with non-existent $test resolves undefined', function() {
-			minioc.when('$test', function(eventual) {
-				expect(captured).to.be();
-				captured = eventual;
-			});
-			expect(captured).to.be();
-		});
-
-		it('#register $test as a value does not throw and value can be subsequently resolved', function() {
-			minioc.register('$test').as.value(test_value);
-			expect(minioc.get('$test')).to.be(test_value);
-		});
-
-		it('due to the preceding registraiont of the $test item, the callback from the previous #when is given the value.', function() {
-			expect(captured).to.be(test_value);
-		});
-
-		it('#unregister $test removes it from the container', function() {
-			minioc.unregister('$test');
-			expect(minioc.get('$test')).to.be();
-		});
-
-		it('#has returns false for undefined $test', function() {
-			expect(minioc.has('$test')).to.be(false);
-		});
-
-		it('#get with undefined $test resolves undefined', function() {
-			expect(minioc.get('$test')).to.be();
 		});
 
 		describe('an item registered as a singleton value', function() {

@@ -1,39 +1,67 @@
 minioc (alpha) [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http://travis-ci.org/flitbit/minioc)
 ======
 
-A miniature, conventions-based IOC implementation for nodejs.
+A miniature, conventions-based IoC implementation for nodejs.
 
 ## Background
 
 After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience.
 
-## Brief
+## Detail
 
-`minioc` supports 3 types of registrations, _bald values_, _factories_, and _ctors_.
+`minioc` is an IoC container.
 
-type | description
---- | ---
-bare value | Any javascript object (string, number, function, etc.).
-factory | A function that produces values.
-ctor | A class, intended to be called with the `new` operator.
+At its core, `minioc` is just a mapping between keys and values. It might be convenient to think of it as a hashtable, except that it behaves differently depending on how an item was put into it.
 
-**Injection**
+It understands 3 kinds of things:
 
-When working with functions, including constructors, `minioc` will attempt to resolve any named argument beginning with a dollar sign `$`.
+* **values** - seems self explanitory
+* **factories** - which are functions that produce values
+* **constructors** - which are classes constructed on demand (depending on strategy)
 
-This means that if you register a service, say `$people`, and a factory like the following:
+When `register`ing items with the container, the caller has the option of indicating how the container should resolve the item. The defaults are:
+
+* **values** - always resolved as given
+* **factories** - invoked to produce a value for each call
+* **constructors** - invoked to construct a new instance for each call
 
 ```javascript
-var findr = function($people, options) {
+var minioc = require('minioc');
 
-	// do something with $people...
+minioc.register('item_1').as.value("I'm a value");
 
-};
+// a factory...
+minioc.register('item_2').as.factory(function() {
+	return "I'm produced by a factory";
+});
 
-minioc.register('$findr').as.factory(findr);
+// a constructor (class)...
+function Item_3() {
+	this.toString = function() { return "I'm an instance created by constructor"; }
+}
+
+minioc.register('item_3').as.ctor(Item_3);
+
+
+// Print them all to the console...
+console.log(minioc.get('item_1').toString());
+console.log(minioc.get('item_2').toString());
+console.log(minioc.get('item_3').toString());
 ```
 
-`minioc` will `#get` the `$people` object from the container and inject it each time invokes the `$findr` factory. In contrast, the other argument (_options_) must be supplied by the caller or will remain undefined.
+Factories and constructors can be altered at the time of registration so that the result becomes the registered value rather than the target. Such registration changes the container's behavior so that resolution does the following:
+
+* value **factories** - when the factory is available, it is invoked and its value captured to fulfill requests
+* value **constructor** - when the constructor is available, an instance is created and captured to filfill requests
+
+Throughout a container's lifespan, registrations may be modified. If an item has been registered as a `singleton`, the item and its registration are treated as immutable.
+
+Previously registered values may be unregistered unless they are `singletons`.
+
+### Injection
+
+`minioc` performs dependency injection on both factories and constructors. Its convention is to inject any argument whose names begin with a dollar sign ($); other named arguments must be _caller-supplied_.
+
 
 ## Installation
 
