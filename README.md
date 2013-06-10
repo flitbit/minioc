@@ -52,7 +52,7 @@ console.log(minioc.get('item_3').toString());
 
 Factories and constructors can be altered at the time of registration so that the result becomes the registered value rather than the target. This changes the defaults to:
 
-* **factories** - invoked and its value captured to fulfill requests
+* **factories** - invoked and its result captured to fulfill requests
 * **constructor** - created and captured to filfill requests
 
 ```javascript
@@ -96,7 +96,26 @@ console.log(minioc.get('ctor').toString());
 
 ### Singleton Immutability
 
-Throughout a container's lifespan, registrations may be modified. If an item has been registered as a `singleton`, the item and its registration are treated as immutable.
+Throughout a container's lifespan, registrations may be registered, unregistered, and modified. The exception is a singleton registration that already has a value.
+
+```javascript
+// a singleton value...
+minioc.register('$name').as.singleton.value("value");
+
+// a singleton factory...
+minioc.register('$name').as.singleton.factory(function() { return "value"; });
+
+// a singleton value factory...
+minioc.register('$name').as.singleton.from.factory(function() { return "value"; });
+
+// a singleton constructor
+function MyClass() {
+}
+minioc.register('$name').as.singleton.ctor(MyClass);
+
+// a singleton value constructor...
+minioc.register('$name').as.singleton.from.ctor(MyClass);
+```
 
 Previously registered values may be unregistered unless they are `singletons`.
 
@@ -104,6 +123,13 @@ Previously registered values may be unregistered unless they are `singletons`.
 
 `minioc` performs dependency injection on both factories and constructors. Its convention is to inject any argument whose names begin with a dollar sign ($); other named arguments must be _caller-supplied_.
 
+If a registration requires injection and the corresponding registrations are not available to fulfill dependencies then the container won't resolve the target item.
+
+There are several ways to instruct the container about dependencies:
+
+* supply them during registration
+* register them with the container (by convention)
+* supply your own at the time of resolution.
 
 ## Installation
 
@@ -195,7 +221,7 @@ var me = minioc.get('Person', info);
 expect(me.name).to.be(info.name);
 expect(me.age).to.be(info.age);
 ```
-<a href="#tests">$nbsp</a>
+
 ## Tests
 
 Tests use [mocha](http://visionmedia.github.io/mocha/) and [expect.js](https://github.com/LearnBoost/expect.js/), so if you clone the [github repository](https://github.com/flitbit/minioc) you'll need to run:

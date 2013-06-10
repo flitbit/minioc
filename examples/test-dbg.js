@@ -22,43 +22,141 @@ expect(minioc.get('$root')).to.be(root);
 
 expect(minioc.get('$container')).to.be(root);
 
-expect(minioc.has('$test')).to.be(false);
+expect(function() {
+	minioc.register('$container');
+}).to.throwError();
 
-expect(minioc.get('$test')).to.be();
+expect(function() {
+	minioc.register('$root');
+}).to.throwError();
 
-minioc.when('$test', function(eventual) {
-	expect(captured).to.be();
-	captured = eventual;
+var observed, unk = { says: 'Yay!' };
+
+expect(minioc.has('$unk')).to.be(false);
+
+expect(minioc.get('$unk')).to.be();
+
+expect(observed).to.be.an('undefined');
+
+minioc.when('$unk', function(unk) {
+	observed = unk;
+});
+
+expect(observed).to.be.an('undefined');
+
+minioc.register('$unk').as.value(unk);
+
+expect(observed).to.be(unk);
+
+var ours;
+minioc.when('$unk', function(unk) {
+	ours = unk;
+});
+expect(ours).to.be(unk);
+
+
+var foo = { foo: 'bar' };
+minioc.register('$foo').as.singleton.value(foo);
+
+expect(minioc.has('$foo')).to.be(true);
+
+expect(minioc.get('$foo')).to.be(foo);
+
+expect(function() {
+	minioc.unregister('$foo');
+}).to.throwError();
+
+expect(minioc.has('$foo')).to.be(true);
+
+expect(minioc.get('$foo')).to.be(foo);
+
+
+var bar_ctr = 0;
+minioc.register('$bar').as.singleton.factory(function() {
+	return { bar: bar_ctr++ };
+});
+
+expect(minioc.has('$bar')).to.be(true);
+expect(minioc.can('$bar')).to.be(true);
+
+expect(minioc.get('$bar')).to.eql({ bar: 0 });
+
+expect(minioc.get('$bar')).to.eql({ bar: 1 });
+
+expect(function() {
+	minioc.unregister('$bar');
+}).to.throwError();
+
+expect(minioc.has('$bar')).to.be(true);
+
+expect(minioc.get('$bar')).to.eql({ bar: 2 });
+
+//
+expect(minioc.get('$baz')).to.be();
+//
+
+var baz_ctr = 0;
+minioc.register('$baz').from.factory(function() {
+	return { baz: baz_ctr++ };
+});
+
+expect(minioc.has('$baz')).to.be(true);
+
+expect(minioc.get('$baz')).to.eql({ baz: 0 });
+
+expect(minioc.get('$baz')).to.eql({ baz: 0 });
+
+minioc.unregister('$baz');
+
+expect(minioc.has('$baz')).to.be(false);
+
+expect(minioc.get('$baz')).to.be();
+
+var qux_ctr = 0;
+minioc.register('$qux').from.singleton.factory(function() {
+	return { qux: qux_ctr++ };
+});
+
+expect(minioc.has('$qux')).to.be(true);
+
+expect(minioc.get('$qux')).to.eql({ qux: 0 });
+
+expect(minioc.get('$qux')).to.eql({ qux: 0 });
+
+expect(function() {
+	minioc.unregister('$bar');
+}).to.throwError();
+
+expect(minioc.has('$qux')).to.be(true);
+
+expect(minioc.get('$qux')).to.eql({ qux: 0 });
+
+var quux_ctr = 0;
+minioc.register('$quux').as.factory(function($corge) {
+	return { quux: quux_ctr++, corge: $corge };
+});
+
+expect(minioc.has('$quux')).to.be(true);
+
+expect(minioc.can('$quux')).to.be(false);
+
+expect(minioc.get('$quux')).to.eql({ quux: 0, corge: undefined });
+
+expect(captured).to.be();
+
+minioc.when('$quux', function(val) {
+	captured = val;
 });
 expect(captured).to.be();
 
-minioc.register('$test').as.value(test_value);
-expect(minioc.get('$test')).to.be(test_value);
+minioc.register('$corge').as.value('This be corge here.');
 
-expect(captured).to.be(test_value);
+expect(captured).to.eql({ quux: 1, corge: 'This be corge here.'});
 
-minioc.unregister('$test');
-expect(minioc.get('$test')).to.be();
-
-expect(minioc.has('$test')).to.be(false);
-
-expect(minioc.get('$test')).to.be();
-
-var foo = { bar: 'bar' };
-
-minioc.register('$single').as.singleton.from.factory(function () {
-	return foo;
+var ours;
+minioc.when('$quux', function(val) {
+	ours = val;
 });
+expect(ours).to.eql({ quux: 2, corge: 'This be corge here.'});
 
-expect(minioc.get('$single')).to.be(foo);
-
-expect(function() {
-	minioc.unregister('$single');
-}).to.throwError();
-
-expect(function() {
-	minioc.register('$single').as.singleton.from.factory(function () {
-		return { something: 'else' };
-	});
-}).to.throwError();
-
+expect(minioc.get('$quux')).to.eql({ quux: 3, corge: 'This be corge here.'});

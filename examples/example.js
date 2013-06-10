@@ -63,11 +63,14 @@ minioc.register('$a').as.singleton.factory(function($b, $c) {
 	}
 });
 
-expect(minioc.has('$a')).to.not.be.ok();
+expect(minioc.has('$a')).to.be.ok();
+expect(minioc.can('$a')).to.not.be.ok();
 expect(minioc.has('$b')).to.not.be.ok();
+expect(minioc.can('$b')).to.not.be.ok();
 expect(minioc.has('$c')).to.not.be.ok();
+expect(minioc.can('$c')).to.not.be.ok();
 expect(minioc.has('$d')).to.not.be.ok();
-
+expect(minioc.can('$d')).to.not.be.ok();
 
 minioc.register('$b').as.factory(function($d) {
 	return function () {
@@ -75,10 +78,14 @@ minioc.register('$b').as.factory(function($d) {
 	}
 });
 
-expect(minioc.has('$a')).to.not.be.ok();
-expect(minioc.has('$b')).to.not.be.ok();
+expect(minioc.has('$a')).to.be.ok();
+expect(minioc.can('$a')).to.not.be.ok();
+expect(minioc.has('$b')).to.be.ok();
+expect(minioc.can('$b')).to.not.be.ok();
 expect(minioc.has('$c')).to.not.be.ok();
+expect(minioc.can('$c')).to.not.be.ok();
 expect(minioc.has('$d')).to.not.be.ok();
+expect(minioc.can('$d')).to.not.be.ok();
 
 minioc.register('$c').as.factory(function($d) {
 	return function () {
@@ -86,10 +93,14 @@ minioc.register('$c').as.factory(function($d) {
 	}
 });
 
-expect(minioc.has('$a')).to.not.be.ok();
-expect(minioc.has('$b')).to.not.be.ok();
-expect(minioc.has('$c')).to.not.be.ok();
+expect(minioc.has('$a')).to.be.ok();
+expect(minioc.can('$a')).to.not.be.ok();
+expect(minioc.has('$b')).to.be.ok();
+expect(minioc.can('$b')).to.not.be.ok();
+expect(minioc.has('$c')).to.be.ok();
+expect(minioc.can('$c')).to.not.be.ok();
 expect(minioc.has('$d')).to.not.be.ok();
+expect(minioc.can('$d')).to.not.be.ok();
 
 // Optionally, pass in arguments that
 // are already resolved or must be overridden...
@@ -105,7 +116,11 @@ minioc.register('$d').as.ctor($d,
 	});
 
 expect(minioc.has('$a')).to.be.ok();
+expect(minioc.can('$a')).to.be.ok();
 expect(minioc.has('$b')).to.be.ok();
+expect(minioc.can('$b')).to.be.ok();
 expect(minioc.has('$c')).to.be.ok();
+expect(minioc.can('$c')).to.be.ok();
 expect(minioc.has('$d')).to.be.ok();
+expect(minioc.can('$d')).to.be.ok();
 

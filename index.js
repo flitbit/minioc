@@ -1,5 +1,7 @@
 "use strict";
 
+var util = require('util');
+
 var FN_ARGS = /^function\s*[^\(]*\(\s*([^\)]*)\)/m
 , STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg
 ;
@@ -23,6 +25,8 @@ function extractDependenciesFrom(fn, dependencies, options) {
 		}
 	}
 }
+
+
 
 function As(reg) {
 	Object.defineProperties(this, {
@@ -93,6 +97,268 @@ Object.defineProperties(As.prototype, {
 
 });
 
+function Value(reg) {
+	Object.defineProperty(this, '_reg', { value: reg });
+}
+
+Object.defineProperties(Value.prototype, {
+
+	container: { get: function() { return this._reg.container; } },
+
+	has: {
+		value: function() {
+			return (typeof this._val !== 'undefined');
+		},
+		enumerable: true
+	},
+
+	get: {
+		value: function() {
+			return this._val;
+		},
+		enumerable: true,
+		configurable: true
+	},
+
+	set: {
+		value: function(val) {
+			Object.defineProperty(this, '_val', { value: val });
+			this._reg.notify(undefined, this);
+		},
+		enumerable: true,
+		configurable: true
+	}
+
+});
+
+function Fctor(reg) {
+	Fctor.super_.call(this, reg);
+}
+util.inherits(Fctor, Value);
+
+Object.defineProperties(Fctor.prototype, {
+
+	canSatisfyArguments: {
+		value: function(container) {
+			var deps = this._deps
+			, i = -1
+			, len = deps.length
+			, dep
+			;
+			while(++i < len) {
+				dep = deps[i];
+				if (dep.kind === 'd' && !container.can(dep.name)) {
+					return false;
+				}
+			}
+			return true;
+		}
+	},
+
+	prepareArguments: {
+		value: function (container, args) {
+			var deps = this._deps
+			, len = deps.length
+			, i = -1
+			, res = this._args.slice(0)
+			, offset = this._offset || 0
+			, name
+			;
+			while(++i < len) {
+				name = deps[i].name;
+				if (deps[i].kind === 'd') {
+					res[i + offset] = container.get(name);
+				} else {
+					res[i + offset] = deps[i].value;
+				}
+			}
+			return res;
+		}
+	},
+
+	prepareArgumentsWithInit: {
+		value: function (container, init) {
+			var deps = this._deps
+			, len = deps.length
+			, i = -1
+			, res = this._args.slice(0)
+			, offset = this._offset || 0
+			, name
+			;
+			while(++i < len) {
+				name = deps[i].name;
+				if (init && init.hasOwnProperty(name)) {
+					res[i + offset] = init[name];
+				} else if (deps[i].kind === 'd') {
+					res[i + offset] = container.get(name);
+				} else {
+					res[i + offset] = deps[i].value;
+				}
+			}
+			return res;
+		}
+	},
+
+	checkNotify: {
+		value: function(container, deps, data) {
+			var len = deps.length
+			, i = -1
+			;
+			while(++i < len) {
+				if (deps[i].kind === 'd'
+					&& typeof data[deps[i].name] === 'undefined')
+					return;
+			}
+			this._reg.notify(undefined, this, this.prepareArgumentsWithInit(container, data));
+		}
+	},
+
+	finishNotify: {
+		value: function(container, deps, i, name, data, value) {
+			data[deps[i].name] = value;
+			this.checkNotify(container, deps, data);
+		}
+	},
+
+	prepareArgumentsForNotify: {
+		value: function (container, deps) {
+			var self = this
+			, len = deps.length
+			, i = -1
+			, data = {}
+			, name
+			;
+			while(++i < len) {
+				name = deps[i].name;
+				if (typeof deps[i].value !== 'undefined') {
+					data[name] = deps[i].value;
+				} else if (deps[i].kind === 'd') {
+					if (container.can(name)) {
+						data[name] = container.can(name)
+					} else {
+						container.when(name,
+							this.finishNotify.bind(this, container, deps, i, name, data));
+					}
+				}
+			}
+			return data;
+		}
+	},
+
+	has: {
+		value: function(container) {
+			return this.canSatisfyArguments(container);
+		},
+		enumerable: true,
+		configurable: true
+	},
+
+	get: {
+		value: function(container, init) {
+			var container = this.container;
+			var prepared = (typeof init !== 'undefined')
+				? this.prepareArgumentsWithInit(container, init)
+				: this.prepareArguments(container);
+			return this._val.apply(container, prepared);
+		},
+		enumerable: true,
+		configurable: true
+	},
+
+	set: {
+		value: function(container, callable, deps, as) {
+			var self = this
+			, args = []
+			;
+			Object.defineProperties(this, {
+				_deps: { value: deps },
+				_args: { value: args },
+				_val: { value: callable }
+			});
+			this.checkNotify(container, deps, this.prepareArgumentsForNotify(container, deps));
+		},
+		enumerable: true,
+		configurable: true
+	}
+
+});
+
+function ValueFctor(reg) {
+	ValueFctor.super_.call(this, reg);
+}
+util.inherits(ValueFctor, Fctor);
+
+Object.defineProperties(ValueFctor.prototype, {
+
+	get: {
+		value: function(container, init) {
+			if (typeof this._value === 'undefined') {
+				this._value = Fctor.prototype.get.call(this, container, init);
+			}
+			return this._value;
+		},
+		enumerable: true,
+		configurable: true
+	}
+});
+
+function Ctor(reg) {
+	Ctor.super_.call(this, reg);
+}
+util.inherits(Ctor, Fctor);
+
+Object.defineProperties(Ctor.prototype, {
+
+	get: {
+		value: function(container, init) {
+			var prepared = (typeof init !== 'undefined')
+				? this.prepareArgumentsWithInit(container, init)
+				: this.prepareArguments(container)
+			, ctor = Function.prototype.bind.apply(this._val, prepared)
+			;
+			return new (ctor);
+		},
+		enumerable: true,
+		configurable: true
+	},
+
+	set: {
+		value: function(container, ctor, deps, as) {
+			var args = [null]
+			;
+			Object.defineProperties(this, {
+				_deps: { value: deps },
+				_args: { value: args },
+				_offset: { value: 1 },
+				_val: { value: ctor }
+			});
+			this.checkNotify(container, deps, this.prepareArgumentsForNotify(container, deps));
+		},
+		enumerable: true,
+		configurable: true
+	}
+
+});
+
+function ValueCtor(reg) {
+	ValueCtor.super_.call(this, reg);
+}
+util.inherits(ValueCtor, Ctor);
+
+Object.defineProperties(ValueCtor.prototype, {
+
+	get: {
+		value: function(container, init) {
+			if (typeof this._value === 'undefined') {
+				this._value = Ctor.prototype.get.call(this, container, init);
+			}
+			return this._value;
+		},
+		enumerable: true,
+		configurable: true
+	}
+});
+
 function Registration(name, container) {
 	Object.defineProperties(this, {
 		name: {
@@ -109,22 +375,14 @@ function Registration(name, container) {
 	});
 }
 
-function prepareArguments(deps, args, offset, init) {
-	var len = deps.length
-	, i = -1
-	, res = args.slice(0)
-	, name
-	;
-	while(++i < len) {
-		name = deps[i].name;
-		if (init.hasOwnProperty(name)) {
-			res[i + offset] = init[name];
-		}
-	}
-	return res;
-}
-
 Object.defineProperties(Registration.prototype, {
+
+	hasWaiters: {
+		get: function() {
+			return this._callbacks && this._callbacks.length;
+		}
+	},
+
 	as: {
 		get: function() {
 			return new As(this);
@@ -140,13 +398,12 @@ Object.defineProperties(Registration.prototype, {
 		enumerable: true
 	},
 
-
 	notify:
 	{
-		value: function(callback, init) {
+		value: function(callback, val, init) {
 			if (callback) {
-				if (typeof val !== 'undefined') {
-					callback(this.get(init));
+				if (val && (init || val.has(this.container))) {
+					callback(val.get(init));
 				} else {
 					this._callbacks.push(callback);
 				}
@@ -154,11 +411,9 @@ Object.defineProperties(Registration.prototype, {
 				var callbacks = this._callbacks
 				, len = (callbacks) ? callbacks.length : 0
 				, i = -1
-				, val = this._val
-				, isFactory = this._isFactory
 				;
 				while(++i < len) {
-					callbacks[i](this.get(init));
+					callbacks[i](val.get(init));
 				}
 				this._callbacks.length = 0;
 			}
@@ -168,86 +423,60 @@ Object.defineProperties(Registration.prototype, {
 	has:
 	{
 		value: function() {
-			return typeof this._val !== 'undefined';
+			return (typeof this._value !== 'undefined');
 		},
 		enumerable: true
+	},
+
+	can:
+	{
+		value: function() {
+			return this.has() && this._value.has(this.container);
+		},
+		enumerable: true,
 	},
 
 	when:
 	{
 		value: function(callback, init)
 		{
-			this.notify(callback, init);
+			this.notify(callback, this._value, init);
 		},
-		enumerable: true,
-		writable: true
+		enumerable: true
 	},
 
 	get:
 	{
 		value: function(init)
 		{
+			var val = this._value;
+			if (typeof val !== 'undefined') return val.get(init);
 		},
 		enumerable: true,
-		writable: true
 	},
 
 	setValue: {
 		value: function(val, as) {
-			if (typeof this._val !== 'undefined' && this.isSingleton) {
-				throw new Error('Invalid operation; singleton `'
-					.concat(this.name, '` cannot be re-assigned'));
-			}
-			this.get = function() { return val; };
-			this.when = function(callback) { callback(val); };
-			Object.defineProperty(this, '_val', { value: true, writable: true, configurable: true });
+			this.checkAssignable();
+			Object.defineProperty(this, '_value',
+				{
+					value: new Value(this),
+					writable: true,
+					configurable: true
+				});
 			if (as.singleton_intent && !this.isSingleton) {
 				Object.defineProperty(this, 'isSingleton', {
 					value: true,
 					enumerable: true,
 				});
 			}
-			this.notify();
-		}
-	},
-
-	canSatisfyArguments: {
-		value: function(container, deps) {
-			var i = -1
-			, len = deps.length
-			, dep
-			;
-			while(++i < len) {
-				dep = deps[i];
-				if (dep.kind === 'd' && !container.has(dep.name)) {
-					return false;
-				}
-			}
-			return true;
-		}
-	},
-
-	satisfyArguments:  {
-		value: function(container, deps, args) {
-			var i = -1
-			, len = deps.length
-			, dep
-			;
-			while(++i < len) {
-				dep = deps[i];
-				if (dep.kind === 'd') {
-					args.push(container.get(dep.name));
-				} else {
-					args.push(dep.value);
-				}
-			}
-			return args;
+			this._value.set(val);
 		}
 	},
 
 	checkAssignable: {
 		value: function() {
-			if (this.isSingleton && typeof this._val !== 'undefined') {
+			if (this.isSingleton && typeof this._value !== 'undefined') {
 				throw new Error('Invalid operation; singleton `'
 					.concat(this.name, '` cannot be assigned'));
 			}
@@ -255,111 +484,46 @@ Object.defineProperties(Registration.prototype, {
 		enumerable: true
 	},
 
-	setFactory: {
-		value: function(factory, deps, as) {
-			var self = this
-			, finish = function() {
-				var args, single, val;
-				if (!self.has()) {
-					if (self.canSatisfyArguments(self.container, deps)) {
-						args = self.satisfyArguments(self.container, deps, []);
-						if (as.value_intent) {
-							val = factory.apply(self.container, args);
-							self.get = function() { return val; };
-							self.when = function(callback) { callback(val); };
-						} else {
-							self.get = function(init) {
-								var prepared = (typeof init !== 'undefined')
-								? prepareArguments(deps, args, 0, init) : args;
-								return factory.apply(self.container, prepared);
-							};
-							self.when = function(cb, init) {
-								var prepared = (typeof init !== 'undefined')
-								? prepareArguments(deps, args, 0, init) : args;
-								cb(factory.apply(self.container, prepared));
-							}
-						}
-						Object.defineProperty(self, '_val', { value: true, writable: true, configurable: true });
-						self.notify();
-					}
-				}
-			}
-			;
-			if (this.has()) {
-				if (typeof this._val !== 'undefined') {
-					this.checkAssignable();
-					delete this._val;
-				}
-				this.get = Registration.prototype.get;
-				this.when = Registration.prototype.when;
-			}
+	checkReplaceable: {
+		value: function(container) {
+			return (this.container !== container
+				&& !this._isSingleton
+				&& !this._isLocked
+				);
+		},
+		enumerable: true
+	},
+
+	setCallable: {
+		value: function(callable, deps, as, cls) {
+			this.checkAssignable();
+			Object.defineProperty(this, '_value',
+			{
+				value: new (Function.prototype.bind.apply(cls, [null, this])),
+				writable: true,
+				configurable: true
+			});
 			if (as.singleton_intent && !this.isSingleton) {
 				Object.defineProperty(this, 'isSingleton', {
 					value: true,
 					enumerable: true,
 				});
 			}
-			deps.forEach(function (d) {
-				if (d.kind === 'd') {
-					self.container.when(d.name, finish);
-				}
-			});
-			finish();
+			this._value.set(this.container, callable, deps, as);
+		}
+	},
+
+	setFactory: {
+		value: function(factory, deps, as) {
+			this.setCallable(factory, deps, as,
+				(as.value_intent) ? ValueFctor : Fctor);
 		}
 	},
 
 	setClass: {
-		value: function(clazz, deps, as) {
-			var self = this
-			, finish = function() {
-				var args, ctor, val;
-				if (!self.has()) {
-					if (self.canSatisfyArguments(self.container, deps)) {
-						args = self.satisfyArguments(self.container, deps, [null]);
-						if (as.value_intent) {
-							val = new (Function.prototype.bind.apply(clazz, args));
-							self.get = function() { return val; };
-							self.when = function(callback) { callback(val); };
-						} else {
-							self.get = function(init) {
-								var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
-								ctor = Function.prototype.bind.apply(clazz, prepared)
-								;
-								return new (ctor);
-							};
-							self.when = function(cb, init) {
-								var prepared = (typeof init !== 'undefined') ? prepareArguments(deps, args, 1, init) : args
-								, ctor = Function.prototype.bind.apply(clazz, prepared)
-								;
-								cb(new (ctor));
-							};
-						}
-						Object.defineProperty(self, '_val', { value: true, writable: true, configurable: true });
-						self.notify();
-					}
-				}
-			}
-			;
-			if (this.has()) {
-				if (typeof this._val !== 'undefined') {
-					this.checkAssignable();
-					delete this._val;
-				}
-				this.get = Registration.prototype.get;
-				this.when = Registration.prototype.when;
-			}
-			if (as.singleton_intent && !this.isSingleton) {
-				Object.defineProperty(this, 'isSingleton', {
-					value: true,
-					enumerable: true,
-				});
-			}
-			deps.forEach(function (d) {
-				if (d.kind === 'd') {
-					self.container.when(d.name, finish);
-				}
-			});
-			finish();
+		value: function(ctor, deps, as) {
+			this.setCallable(ctor, deps, as,
+				(as.value_intent) ? ValueCtor : Ctor);
 		}
 	}
 });
@@ -380,6 +544,26 @@ function Container(next, tenant) {
 }
 
 Object.defineProperties(Container.prototype, {
+
+	can: {
+		value: function(what) {
+			if (typeof what !== 'undefined') {
+				var c = this
+				, r
+				;
+				while(c) {
+					r = c._reg;
+					if (r.hasOwnProperty(what)) {
+						return r[what].can();
+					} else {
+						c = c._next;
+					}
+				}
+			}
+			return false;
+		},
+		enumerable: true
+	},
 
 	has: {
 		value: function(what) {
@@ -446,6 +630,7 @@ Object.defineProperties(Container.prototype, {
 					throw new Error("Invalid operation; it must be a string or a named function.");
 				}
 				name = it.name;
+				val = it;
 			}
 			if (typeof name !== 'undefined') {
 				if (name === '$container' || name === '$root') {
@@ -455,18 +640,21 @@ Object.defineProperties(Container.prototype, {
 				var reg = this._reg
 				, current = reg[name]
 				;
-				if (!current) {
+				if (!current || current.checkReplaceable(this)) {
 					reg[name] = current = new Registration(name, this);
-					if (fn) {
-						if (it.name) {
-							current.as.ctor(it);
-						} else {
-							current.as.factory(it);
-						}
-					}
+				} else {
+					current.checkAssignable();
 				}
-				if (typeof val !== 'undefined' && typeof val !== 'function') {
-					current.as.value(val);
+				if (typeof val !== 'undefined') {
+					if (fn || typeof val !== 'function') {
+						if (val.name) {
+							current.as.ctor(val);
+						} else {
+							current.as.factory(val);
+						}
+					} else {
+						current.as.value(val);
+					}
 				}
 				return current;
 			}
@@ -508,6 +696,13 @@ Object.defineProperties(Container, {
 		enumerable: true
 	},
 
+	can: {
+		value: function(what) {
+			return __root.can(what);
+		},
+		enumerable: true
+	},
+
 	has: {
 		value: function(what) {
 			return __root.has(what);
@@ -543,7 +738,5 @@ Object.defineProperties(Container, {
 		enumerable: true
 	}
 });
-Container.Registration = Registration;
-Container.As = As;
 
 module.exports = Container;

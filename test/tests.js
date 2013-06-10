@@ -124,6 +124,10 @@ describe("Minioc", function() {
 				expect(minioc.has('$bar')).to.be(true);
 			});
 
+			it('is resolvable', function() {
+				expect(minioc.can('$bar')).to.be(true);
+			});
+
 			it('can be retrieved', function() {
 				expect(minioc.get('$bar')).to.eql({ bar: 0 });
 			});
@@ -209,6 +213,57 @@ describe("Minioc", function() {
 
 			it('resolves after unregister attempt', function() {
 				expect(minioc.get('$qux')).to.eql({ qux: 0 });
+			});
+
+		});
+
+		describe('an item registered as a factory with injenction dependency', function() {
+			var quux_ctr = 0
+			, captured
+			;
+
+			minioc.register('$quux').as.factory(function($corge) {
+				return { quux: quux_ctr++, corge: $corge };
+			});
+
+			it('is known to the container', function() {
+				expect(minioc.has('$quux')).to.be(true);
+			});
+
+			it('cannot be fully resolved', function() {
+				expect(minioc.can('$quux')).to.be(false);
+			});
+
+			it('is not resolvable without its dependency', function() {
+				expect(minioc.can('$quux')).to.be(false);
+			});
+
+			it('cannot be retrieved without init data', function() {
+				expect(minioc.get('$quux')).to.eql({ quux: 0, corge: undefined});
+			});
+
+			it('can be asynchronously retrieved via callback', function() {
+				expect(captured).to.be();
+				minioc.when('$quux', function(val) {
+					captured = val;
+				});
+				expect(captured).to.be();
+			});
+
+			it('can registere the missing value', function() {
+				minioc.register('$corge').as.value('This be corge here.');
+			});
+
+			it('invokes prior callbacks when registered', function() {
+				expect(captured).to.eql({ quux: 1, corge: 'This be corge here.'});
+			});
+
+			it('immediately fulfills asynchronous requests once registered', function() {
+				var ours;
+				minioc.when('$quux', function(val) {
+					ours = val;
+				});
+				expect(ours).to.eql({ quux: 2, corge: 'This be corge here.'});
 			});
 
 		});
