@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 var minioc = require('..'),
 expect = require('expect.js')
