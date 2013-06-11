@@ -23,6 +23,7 @@ When `register`ing items with the container, the caller has the option of indica
 * **factories** - produce a value for each call
 * **constructors** - construct a new instance for each call
 
+[readme-example-2.js](https://github.com/flitbit/minioc/blob/master/examples/readme-example-2.js)
 ```javascript
 var minioc = require('minioc');
 
@@ -55,6 +56,7 @@ Factories and constructors can be altered at the time of registration so that th
 * **factories** - invoked and its result captured to fulfill requests
 * **constructor** - created and captured to filfill requests
 
+[readme-example-3.js](https://github.com/flitbit/minioc/blob/master/examples/readme-example-3.js)
 ```javascript
 var minioc = require('..');
 
@@ -94,9 +96,9 @@ console.log(minioc.get('factory').toString());
 console.log(minioc.get('ctor').toString());
 ```
 
-### Singleton Immutability
+### Singleton = Immutable Registrations
 
-Throughout a container's lifespan, registrations may be registered, unregistered, and modified. The exception is a singleton registration that already has a value.
+Throughout a container's lifespan, items may be registered, unregistered, and modified. The exception is a singleton registration that already has a value.
 
 ```javascript
 // a singleton value...
@@ -117,13 +119,66 @@ minioc.register('$name').as.singleton.ctor(MyClass);
 minioc.register('$name').as.singleton.from.ctor(MyClass);
 ```
 
-Previously registered values may be unregistered unless they are `singletons`.
+If a registration indicates it is for a singleton, the item may not be unregistered.
 
 ### Injection
 
 `minioc` performs dependency injection on both factories and constructors. Its convention is to inject any argument whose names begin with a dollar sign ($); other named arguments must be _caller-supplied_.
 
-If a registration requires injection and the corresponding registrations are not available to fulfill dependencies then the container won't resolve the target item.
+The container distinguishes between items that it can fulfill entirely from those that are registered but not fully resolvable.
+
+[readme-example-4.js](https://github.com/flitbit/minioc/blob/master/examples/readme-example-4.js)
+```javascript
+var minioc = require('..')
+, expect = require('expect.js')
+;
+
+function My($data) {
+	this.has = (typeof $data !== 'undefined');
+	this.data = $data;
+}
+
+minioc.register('My').as.ctor(My);
+
+// minioc has the registration...
+expect(minioc.has('My')).to.be(true);
+
+// ... but it can't fulfill the dependencies...
+expect(minioc.can('My')).to.be(false);
+
+var one = minioc.get('My');
+
+expect(one).to.have.property('has');
+expect(one.has).to.be(false);
+
+expect(one).to.have.property('data');
+expect(one.data).to.be.an('undefined');
+
+var data =  {
+	something: "of interest",
+	other: "data"
+};
+
+// The dependency must be user-supplied...
+var two = minioc.get('My', { $data: data });
+
+expect(two).to.have.property('has');
+expect(two.has).to.be(true);
+
+expect(two).to.have.property('data');
+expect(two.data).to.eql(data);
+
+// Until the dependency can be met...
+minioc.register('$data').as.value(data);
+
+var three = minioc.get('My');
+
+expect(three).to.have.property('has');
+expect(three.has).to.be(true);
+
+expect(three).to.have.property('data');
+expect(three.data).to.eql(data);
+```
 
 There are several ways to instruct the container about dependencies:
 
@@ -236,18 +291,27 @@ npm install
 npm test
 ```
 
+... or ...
+
+```bash
+mocha -R spec
+```
+
 ## API
+
+!! WORK IN PROGRESS !!!
 
 ### `minioc`
 
 When you import the `minioc` module, the resulting object is a constructor for the Container class, but it also provides several convenience methods that can be used directly.
 
+* `can` - _property_- determines whether an item can be resolved with all dependencies.
 * `create` - _function_ - creates a new nested container.
 * `get` - _function_ - gets an item according to its registration with the root container.
 * `has` - _function_ - determines if an item has a registration with the root container.
 * `register` - _function_ - registers a named item with the root container.
 * `root` - _property_ - provides access to the root container.
-* `when` - _function_ - registers a callback invoked when a named item becomes available in the root container.
+* `when` - _function_ - registers a callback invoked when an item can be resolved with all dependencies.
 
 ### `Container`
 
@@ -259,10 +323,11 @@ Container's constructor takes an optional argument, `next`, which indicates wher
 
 #### behavior
 
+* `can` - _property_ - determines if the container can resolve an item with all dependencies.
 * `get` - _function_ - gets an item according to its registration.
 * `has` - _function_ - determines if an item has a registration.
 * `register` - _function_ - registers a named item and returns its `Registration`.
-* `when` - _function_ - registers a callback invoked when a named item becomes available.
+* `when` - _function_ - registers a callback invoked when an item can be resolved with all dependencies.
 
 ### `Registration`
 
