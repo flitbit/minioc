@@ -15,6 +15,7 @@ expect(minioc.has('My')).to.be(true);
 // ... but it can't fulfill the dependencies...
 expect(minioc.can('My')).to.be(false);
 
+// It can be constructed, without the dependencies met...
 var one = minioc.get('My');
 
 expect(one).to.have.property('has');
@@ -47,4 +48,3 @@ expect(three.has).to.be(true);
 
 expect(three).to.have.property('data');
 expect(three.data).to.eql(data);
-
