@@ -1,3 +1,5 @@
+"use strict";
+
 var minioc = require('..');
 
 // a value...
