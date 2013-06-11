@@ -1,4 +1,4 @@
-minioc (alpha) [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http://travis-ci.org/flitbit/minioc)
+minioc [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http://travis-ci.org/flitbit/minioc)
 ======
 
 A miniature, conventions-based IoC implementation for nodejs.
