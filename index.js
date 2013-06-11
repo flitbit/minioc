@@ -450,7 +450,7 @@ Object.defineProperties(Registration.prototype, {
 		value: function(init)
 		{
 			var val = this._value;
-			if (typeof val !== 'undefined') return val.get(init);
+			if (typeof val !== 'undefined') return val.get(this.container, init);
 		},
 		enumerable: true,
 	},

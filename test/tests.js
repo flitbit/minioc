@@ -217,7 +217,7 @@ describe("Minioc", function() {
 
 		});
 
-		describe('an item registered as a factory with injenction dependency', function() {
+		describe('an item registered as a factory with injection dependency', function() {
 			var quux_ctr = 0
 			, captured
 			;
