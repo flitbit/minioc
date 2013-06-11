@@ -171,7 +171,7 @@ describe("Minioc", function() {
 			});
 
 			it('can be unregistered', function() {
-					minioc.unregister('$baz');
+				minioc.unregister('$baz');
 			});
 
 			it('is not known to the container after unregister', function() {
@@ -203,7 +203,7 @@ describe("Minioc", function() {
 
 			it('cannot be unregistered', function() {
 				expect(function() {
-					minioc.unregister('$bar');
+					minioc.unregister('$qux');
 				}).to.throwError();
 			});
 
@@ -267,5 +267,121 @@ describe("Minioc", function() {
 			});
 
 		});
+
+		describe('an item registered as a ctor', function() {
+			var grault_ctr = 0;
+			function Grault() {
+				this.grault = grault_ctr++;
+			}
+			minioc.register('Grault').as.ctor(Grault);
+
+			it('is known to the container', function() {
+				expect(minioc.has('Grault')).to.be(true);
+			});
+
+			it('is resolvable', function() {
+				expect(minioc.can('Grault')).to.be(true);
+			});
+
+			it('can be retrieved', function() {
+				expect(minioc.get('Grault')).to.eql({ grault: 0 });
+			});
+
+			it('each retrieval gets a new instance', function() {
+				expect(minioc.get('Grault')).to.eql({ grault: 1 });
+			});
+
+			it('can be unregistered', function() {
+				minioc.unregister('Grault');
+			});
+
+			it('is unknown to the container after unregister', function() {
+				expect(minioc.has('Grault')).to.be(false);
+			});
+
+			it('fails to resolve after unregister', function() {
+				expect(minioc.get('Grault')).to.be();
+			});
+
+		});
+
+		describe('an item registered as a singleton ctor', function() {
+			var garply_ctr = 0;
+			function Garply() {
+				this.garply = garply_ctr++;
+			}
+			minioc.register('Garply').as.singleton.ctor(Garply);
+
+			it('is known to the container', function() {
+				expect(minioc.has('Garply')).to.be(true);
+			});
+
+			it('is resolvable', function() {
+				expect(minioc.can('Garply')).to.be(true);
+			});
+
+			it('can be retrieved', function() {
+				expect(minioc.get('Garply')).to.eql({ garply: 0 });
+			});
+
+			it('each retrieval gets a new instance', function() {
+				expect(minioc.get('Garply')).to.eql({ garply: 1 });
+			});
+
+			it('cannot be unregistered', function() {
+				expect(function() {
+					minioc.unregister('Garply');
+				}).to.throwError();
+			});
+
+			it('is known to the container after unregister attempt', function() {
+				expect(minioc.has('Garply')).to.be(true);
+			});
+
+			it('resolves after unregister attempt', function() {
+				expect(minioc.get('Garply')).to.eql({ garply: 2 });
+			});
+
+		});
+
+		describe('an item registered as a singleton ctor with value intent', function() {
+			var waldo_ctr = 0;
+			function Waldo() {
+				this.waldo= waldo_ctr++;
+			}
+			minioc.register('Waldo').as.singleton.from.ctor(Waldo);
+
+			it('is known to the container', function() {
+				expect(minioc.has('Waldo')).to.be(true);
+			});
+
+			it('is resolvable', function() {
+				expect(minioc.can('Waldo')).to.be(true);
+			});
+
+			it('can be retrieved', function() {
+				expect(minioc.get('Waldo')).to.eql({ waldo: 0 });
+			});
+
+			it('each retrieval gets the same instance', function() {
+				expect(minioc.get('Waldo')).to.eql({ waldo: 0 });
+			});
+
+			it('cannot be unregistered', function() {
+				expect(function() {
+					minioc.unregister('Waldo');
+				}).to.throwError();
+			});
+
+			it('is known to the container after unregister attempt', function() {
+				expect(minioc.has('Waldo')).to.be(true);
+			});
+
+			it('resolves after unregister attempt', function() {
+				expect(minioc.get('Waldo')).to.eql({ waldo: 0 });
+			});
+
+		});
+
 	});
 });

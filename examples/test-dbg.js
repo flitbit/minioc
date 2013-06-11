@@ -160,3 +160,26 @@ minioc.when('$quux', function(val) {
 expect(ours).to.eql({ quux: 2, corge: 'This be corge here.'});
 
 expect(minioc.get('$quux')).to.eql({ quux: 3, corge: 'This be corge here.'});
+
+var grault_ctr = 0;
+function Grault() {
+	this.grault = grault_ctr++;
+	this.toString = function() {
+		return 'Gggggrault #'.concat(this.id, ' here!');
+	}
+}
+minioc.register('Grault').as.ctor(Grault);
+
+expect(minioc.has('Grault')).to.be(true);
+
+expect(minioc.can('Grault')).to.be(true);
+
+expect(minioc.get('Grault')).to.eql({ grault: 0 });
+
+expect(minioc.get('Grault')).to.eql({ grault: 1 });
+
+minioc.unregister('Grault');
+
+expect(minioc.has('Grault')).to.be(false);
+
+expect(minioc.get('Grault')).to.be();

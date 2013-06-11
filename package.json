@@ -1,11 +1,12 @@
 {
 	"name": "minioc",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"author": "Phillip Clark <phillip@flitbit.com>",
 	"description": "A miniature, conventions-based IOC implementation for nodejs.",
 	"keywords": ["ioc", "container", "dependency", "injection", "di"],
 	"main": "index.js",
 	"directories": {
+		"lib": "lib",
 		"example": "examples",
 		"test": "test"
 	},
