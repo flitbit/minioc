@@ -1,11 +1,11 @@
-minioc [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http://travis-ci.org/flitbit/minioc)
+minioc  [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http://travis-ci.org/flitbit/minioc)
 ======
 
 A miniature, conventions-based IoC implementation for nodejs.
 
 ## Background
 
-After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience.
+After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience on the server side.
 
 ## `minioc` is an IoC container.
 
@@ -53,8 +53,8 @@ console.log(minioc.get('item_3').toString());
 
 Factories and constructors can be altered at the time of registration so that the result becomes the registered value rather than the target. This changes the defaults to:
 
-* **factories** - invoked and its result captured to fulfill requests
-* **constructor** - created and captured to filfill requests
+* **factories** - invoked once with the result captured to fulfill all requests
+* **constructor** - one instance created and captured to filfill all requests
 
 [readme-example-3.js](https://github.com/flitbit/minioc/blob/master/examples/readme-example-3.js)
 ```javascript
@@ -83,15 +83,11 @@ function CtorExample() {
 
 minioc.register('ctor').from.ctor(CtorExample);
 
-// Print them to the console a couple of times
-// to ensure they are the same value...
+// write them to the console...
 console.log(minioc.get('factory').toString());
 console.log(minioc.get('ctor').toString());
 
-
-console.log(factory().toString());
-console.log((new CtorExample()).toString());
-
+// notice the values don't change...
 console.log(minioc.get('factory').toString());
 console.log(minioc.get('ctor').toString());
 ```
@@ -123,7 +119,7 @@ If a registration indicates it is for a singleton, the item may not be unregiste
 
 ### Injection
 
-`minioc` performs dependency injection on both factories and constructors. Its convention is to inject any argument whose names begin with a dollar sign ($); other named arguments must be _caller-supplied_.
+`minioc` performs dependency injection on both factories and constructors. Its convention is to inject any argument whose name begins with a dollar sign ($); other named arguments must be _caller-supplied_.
 
 The container distinguishes between items that it can fulfill entirely from those that are registered but not fully resolvable.
 
@@ -310,6 +306,7 @@ When you import the `minioc` module, the resulting object is a constructor for t
 * `get` - _function_ - gets an item according to its registration with the root container.
 * `has` - _function_ - determines if an item has a registration with the root container.
 * `register` - _function_ - registers a named item with the root container.
+* `fulfill` - _function_ - registers a callback function with the root container to be invoked when the function's arguments can be fulfilled.
 * `root` - _property_ - provides access to the root container.
 * `when` - _function_ - registers a callback invoked when an item can be resolved with all dependencies.
 
@@ -327,6 +324,7 @@ Container's constructor takes an optional argument, `next`, which indicates wher
 * `get` - _function_ - gets an item according to its registration.
 * `has` - _function_ - determines if an item has a registration.
 * `register` - _function_ - registers a named item and returns its `Registration`.
+* `fulfill` - _function_ - registers a callback function to be invoked when the function's arguments can be fulfilled.
 * `when` - _function_ - registers a callback invoked when an item can be resolved with all dependencies.
 
 ### `Registration`
@@ -365,6 +363,17 @@ minioc.register('$calculator').as.factory(function() {
 // ... or as a ctor ...
 minioc.register('$calculator').as.ctor(Calculator);
 ```
+**fulfill**: shedules a callback function to be invoked as soon as all of its dependencies can be met.
+
+```javascript
+// an identifying name must be provided with a fulfillment callback;
+// this example indicates it is dependent on $config, so minioc will
+// invoke the callback as soon as it can inject the $config
+// dependency...
+minioc.fulfill('must-be-named', function($config) {
+	console.log('Yay! We have a $config' + $config);
+});
+```
 
 **when**: provides a callback to be invoked when a particular, named item gets registered.
 
@@ -376,7 +385,7 @@ minioc.when('$calculator', function(it) {
 
 ## Usage
 
-Once minioc is installed, any module directly referencing the container must import it.
+`require` minioc:
 
 ```javascript
 var minioc = require('minioc');
@@ -390,10 +399,12 @@ var minioc = require('minioc')
 , expect = require('expect.js')
 ;
 
+expect(minioc).to.have.property('can');
 expect(minioc).to.have.property('has');
 expect(minioc).to.have.property('get');
 expect(minioc).to.have.property('when');
 expect(minioc).to.have.property('register');
+expect(minioc).to.have.property('fulfill');
 ```
 
 <a href="bald-values"></a>
