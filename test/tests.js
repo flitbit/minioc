@@ -19,6 +19,8 @@ describe("Minioc", function() {
 			expect(minioc).to.have.property('register');
 			expect(minioc).to.have.property('root');
 			expect(minioc).to.have.property('when');
+			expect(minioc).to.have.property('fulfill');
+			expect(minioc).to.have.property('checkUnfulfilled');
 		});
 
 		it('#has returns true for $root', function() {
@@ -47,6 +49,18 @@ describe("Minioc", function() {
 			expect(function() {
 				minioc.register('$root');
 			}).to.throwError();
+		});
+
+		it('#checkUnfulfilled returns an empty array when there are no checkUnfulfilled registrations', function() {
+			expect(minioc.checkUnfulfilled).to.not.throwError();
+		});
+
+		it('#checkUnfulfilled returns an array of keys when there are checkUnfulfilled registrations', function() {
+			// create an checkUnfulfilled registration
+			minioc.fulfill('quack', function SomeObject($someDependency) {});
+			expect(minioc.checkUnfulfilled).to.throwError();
+			minioc.register('$someDependency').as.value('asdf');
+			expect(minioc.checkUnfulfilled).to.not.throwError();
 		});
 
 		describe('an item that is not registered', function() {
