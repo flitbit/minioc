@@ -10,6 +10,18 @@ expect(minioc).to.have.property('register');
 var root = minioc.root
 ;
 
+// Register a function to be called when the container
+// can inject all of the arguments...
+root.fulfill('sample', function($container, $foo, $a, $b, $c, $d) {
+	console.log('all fulfilled');
+	expect($container).to.be.ok();
+	expect($foo).to.be.ok();
+	expect($a).to.be.ok();
+	expect($b).to.be.ok();
+	expect($c).to.be.ok();
+	expect($d).to.be.ok();
+});
+
 expect(minioc.get('$container')).to.be(root);
 expect(minioc.get('$root')).to.be(root);
 
