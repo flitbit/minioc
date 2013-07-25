@@ -25,15 +25,10 @@ function CtorExample() {
 
 minioc.register('ctor').from.ctor(CtorExample);
 
-// Print them to the console a couple of times
-// to ensure they are the same value...
+// write them to the console...
 console.log(minioc.get('factory').toString());
 console.log(minioc.get('ctor').toString());
 
-
-console.log(factory().toString());
-console.log((new CtorExample()).toString());
-
+// notice the values don't change...
 console.log(minioc.get('factory').toString());
 console.log(minioc.get('ctor').toString());
-
