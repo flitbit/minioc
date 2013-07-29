@@ -98,21 +98,21 @@ Throughout a container's lifespan, items may be registered, unregistered, and mo
 
 ```javascript
 // a singleton value...
-minioc.register('$name').as.singleton.value("value");
+minioc.register('name').as.singleton.value("value");
 
 // a singleton factory...
-minioc.register('$name').as.singleton.factory(function() { return "value"; });
+minioc.register('name').as.singleton.factory(function() { return "value"; });
 
 // a singleton value factory...
-minioc.register('$name').as.singleton.from.factory(function() { return "value"; });
+minioc.register('name').as.singleton.from.factory(function() { return "value"; });
 
 // a singleton constructor
 function MyClass() {
 }
-minioc.register('$name').as.singleton.ctor(MyClass);
+minioc.register('name').as.singleton.ctor(MyClass);
 
 // a singleton value constructor...
-minioc.register('$name').as.singleton.from.ctor(MyClass);
+minioc.register('name').as.singleton.from.ctor(MyClass);
 ```
 
 If a registration indicates it is for a singleton, the item may not be unregistered.
@@ -156,7 +156,7 @@ var data =  {
 };
 
 // The dependency must be user-supplied...
-var two = minioc.get('My', { $data: data });
+var two = minioc.get('My', { data: data });
 
 expect(two).to.have.property('has');
 expect(two.has).to.be(true);
@@ -165,7 +165,7 @@ expect(two).to.have.property('data');
 expect(two.data).to.eql(data);
 
 // Until the dependency can be met...
-minioc.register('$data').as.value(data);
+minioc.register('data').as.value(data);
 
 var three = minioc.get('My');
 
@@ -202,10 +202,10 @@ var root = minioc.root;
 expect(root).to.be.ok();
 
 // When you've got a container, it has no registrations
-// except itself ($container) and the root ($root)...
+// except itself (container) and the root (root)...
 
-expect(minioc.get('$container')).to.be(root);
-expect(minioc.get('$root')).to.be(root);
+expect(minioc.get('container')).to.be(root);
+expect(minioc.get('root')).to.be(root);
 
 // You can register values...
 
@@ -213,19 +213,19 @@ minioc.register('four').as.value(4);
 expect(minioc.get('four')).to.be(4);
 
 var foo = { what: 'foo' };
-minioc.register('$foo').as.value(foo);
-expect(minioc.get('$foo')).to.be(foo);
+minioc.register('foo').as.value(foo);
+expect(minioc.get('foo')).to.be(foo);
 
 // You can register factories, each #get will invoke
 // the factory and return the result...
 
 var factory = function() {
 	// within factories, `this` is bound to the container...
-	return this.get('$foo');
+	return this.get('foo');
 };
 
-minioc.register('$factory').as.factory(factory);
-expect(minioc.get('$factory')).to.be(foo);
+minioc.register('factory').as.factory(factory);
+expect(minioc.get('factory')).to.be(foo);
 
 // You can register factories that take arguments you
 // expect to be injected, I adopted the convention
@@ -236,14 +236,14 @@ var accessor = function($foo) {
 	return $foo;
 }
 
-minioc.register('$accessor').as.factory(accessor);
-expect(minioc.get('$accessor')).to.be(foo);
+minioc.register('accessor').as.factory(accessor);
+expect(minioc.get('accessor')).to.be(foo);
 
 // You may also supply your own arguments in place of those
 // that would have been injected...
 
 var bar = { what: 'bar' };
-var it = minioc.get('$accessor', { $foo: bar });
+var it = minioc.get('accessor', { foo: bar });
 expect(it).to.be(bar);
 
 // You can register classes; each #get will invoke the
@@ -340,7 +340,7 @@ var it = minioc.get('what');
 ```
 If you're getting something that takes arguments, you may fulfill those arguments, overriding any injected or configured values.
 ```javascript
-var it = minioc.get('what', { $domain: 'joe.bob.me' });
+var it = minioc.get('what', { domain: 'joe.bob.me' });
 ```
 
 **has**: determines if the container can fulfill requests for an item
@@ -353,32 +353,32 @@ if (minioc.has('what')) {
 
 ```javascript
 // as a bare-value...
-minioc.register('$calculator').as.value(new Calculator);
+minioc.register('calculator').as.value(new Calculator);
 
 // ... or as a factory ...
-minioc.register('$calculator').as.factory(function() {
+minioc.register('calculator').as.factory(function() {
 	return new (Calculator());
 });
 
 // ... or as a ctor ...
-minioc.register('$calculator').as.ctor(Calculator);
+minioc.register('calculator').as.ctor(Calculator);
 ```
 **fulfill**: shedules a callback function to be invoked as soon as all of its dependencies can be met.
 
 ```javascript
 // an identifying name must be provided with a fulfillment callback;
-// this example indicates it is dependent on $config, so minioc will
-// invoke the callback as soon as it can inject the $config
+// this example indicates it is dependent on `config`, so minioc will
+// invoke the callback as soon as it can inject the `config`
 // dependency...
 minioc.fulfill('must-be-named', function($config) {
-	console.log('Yay! We have a $config' + $config);
+	console.log('Yay! We have a `config` ' + $config);
 });
 ```
 
 **when**: provides a callback to be invoked when a particular, named item gets registered.
 
 ```javascript
-minioc.when('$calculator', function(it) {
+minioc.when('calculator', function(it) {
 	// `it` refers to the calculator here.
 };
 ```

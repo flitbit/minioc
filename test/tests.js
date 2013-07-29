@@ -23,31 +23,31 @@ describe("Minioc", function() {
 			expect(minioc).to.have.property('checkUnfulfilled');
 		});
 
-		it('#has returns true for $root', function() {
-			expect(minioc.has('$root')).to.be(true);
+		it('#has returns true for root', function() {
+			expect(minioc.has('root')).to.be(true);
 		});
 
-		it('#has returns true for $container', function() {
-			expect(minioc.has('$container')).to.be(true);
+		it('#has returns true for container', function() {
+			expect(minioc.has('container')).to.be(true);
 		});
 
-		it('#get with $root resolves itself', function() {
-			expect(minioc.get('$root')).to.be(root);
+		it('#get with root resolves itself', function() {
+			expect(minioc.get('root')).to.be(root);
 		});
 
-		it('#get with $container resolves itself', function() {
-			expect(minioc.get('$container')).to.be(root);
+		it('#get with container resolves itself', function() {
+			expect(minioc.get('container')).to.be(root);
 		});
 
 		it('#register with $container fails because the container is a self-reference', function() {
 			expect(function() {
-				minioc.register('$container');
+				minioc.register('container');
 			}).to.throwError();
 		});
 
 		it('#register with $root fails because the root is immutable', function() {
 			expect(function() {
-				minioc.register('$root');
+				minioc.register('root');
 			}).to.throwError();
 		});
 
@@ -59,7 +59,7 @@ describe("Minioc", function() {
 			// create an checkUnfulfilled registration
 			minioc.fulfill('quack', function SomeObject($someDependency) {});
 			expect(minioc.checkUnfulfilled).to.throwError();
-			minioc.register('$someDependency').as.value('asdf');
+			minioc.register('someDependency').as.value('asdf');
 			expect(minioc.checkUnfulfilled).to.not.throwError();
 		});
 
@@ -67,17 +67,17 @@ describe("Minioc", function() {
 			var observed, unk = { says: 'Yay!' };
 
 			it('is not known to the container', function() {
-				expect(minioc.has('$unk')).to.be(false);
+				expect(minioc.has('unk')).to.be(false);
 			});
 
 			it('cannot be retrieved', function() {
-				expect(minioc.get('$unk')).to.be();
+				expect(minioc.get('unk')).to.be();
 			});
 
 			it('can be asynchronously retrieved via callback', function() {
 				expect(observed).to.be.an('undefined');
 
-				minioc.when('$unk', function(unk) {
+				minioc.when('unk', function(unk) {
 					observed = unk;
 				});
 
@@ -85,7 +85,7 @@ describe("Minioc", function() {
 			});
 
 			it('can be registered', function() {
-				minioc.register('$unk').as.value(unk);
+				minioc.register('unk').as.value(unk);
 			});
 
 			it('invokes prior callbacks when registered', function() {
@@ -94,7 +94,7 @@ describe("Minioc", function() {
 
 			it('immediately fulfills asynchronous requests once registered', function() {
 				var ours;
-				minioc.when('$unk', function(unk) {
+				minioc.when('unk', function(unk) {
 					ours = unk;
 				});
 				expect(ours).to.be(unk);
@@ -104,131 +104,131 @@ describe("Minioc", function() {
 
 		describe('an item registered as a singleton value', function() {
 			var foo = { foo: 'bar' };
-			minioc.register('$foo').as.singleton.value(foo);
+			minioc.register('foo').as.singleton.value(foo);
 
 			it('is known to the container', function() {
-				expect(minioc.has('$foo')).to.be(true);
+				expect(minioc.has('foo')).to.be(true);
 			});
 
 			it('can be retrieved', function() {
-				expect(minioc.get('$foo')).to.be(foo);
+				expect(minioc.get('foo')).to.be(foo);
 			});
 
 			it('cannot be unregistered', function() {
 				expect(function() {
-					minioc.unregister('$foo');
+					minioc.unregister('foo');
 				}).to.throwError();
 			});
 
 			it('is known to the container after unregister attempt', function() {
-				expect(minioc.has('$foo')).to.be(true);
+				expect(minioc.has('foo')).to.be(true);
 			});
 
 			it('resolves after unregister attempt', function() {
-				expect(minioc.get('$foo')).to.be(foo);
+				expect(minioc.get('foo')).to.be(foo);
 			});
 
 		});
 
 		describe('an item registered as a singleton factory', function() {
 			var bar_ctr = 0;
-			minioc.register('$bar').as.singleton.factory(function() {
+			minioc.register('bar').as.singleton.factory(function() {
 				return { bar: bar_ctr++ };
 			});
 
 			it('is known to the container', function() {
-				expect(minioc.has('$bar')).to.be(true);
+				expect(minioc.has('bar')).to.be(true);
 			});
 
 			it('is resolvable', function() {
-				expect(minioc.can('$bar')).to.be(true);
+				expect(minioc.can('bar')).to.be(true);
 			});
 
 			it('can be retrieved', function() {
-				expect(minioc.get('$bar')).to.eql({ bar: 0 });
+				expect(minioc.get('bar')).to.eql({ bar: 0 });
 			});
 
 			it('each retrieval invokes the singleton factory', function() {
-				expect(minioc.get('$bar')).to.eql({ bar: 1 });
+				expect(minioc.get('bar')).to.eql({ bar: 1 });
 			});
 
 			it('cannot be unregistered', function() {
 				expect(function() {
-					minioc.unregister('$bar');
+					minioc.unregister('bar');
 				}).to.throwError();
 			});
 
 			it('is known to the container after unregister attempt', function() {
-				expect(minioc.has('$bar')).to.be(true);
+				expect(minioc.has('bar')).to.be(true);
 			});
 
 			it('resolves after unregister attempt', function() {
-				expect(minioc.get('$bar')).to.eql({ bar: 2 });
+				expect(minioc.get('bar')).to.eql({ bar: 2 });
 			});
 
 		});
 
 		describe('an item registered as a factory with value intent', function() {
 			var baz_ctr = 0;
-			minioc.register('$baz').from.factory(function() {
+			minioc.register('baz').from.factory(function() {
 				return { baz: baz_ctr++ };
 			});
 
 			it('is known to the container', function() {
-				expect(minioc.has('$baz')).to.be(true);
+				expect(minioc.has('baz')).to.be(true);
 			});
 
 			it('can be retrieved', function() {
-				expect(minioc.get('$baz')).to.eql({ baz: 0 });
+				expect(minioc.get('baz')).to.eql({ baz: 0 });
 			});
 
 			it('each retrieval receives the same result', function() {
-				expect(minioc.get('$baz')).to.eql({ baz: 0 });
+				expect(minioc.get('baz')).to.eql({ baz: 0 });
 			});
 
 			it('can be unregistered', function() {
-				minioc.unregister('$baz');
+				minioc.unregister('baz');
 			});
 
 			it('is not known to the container after unregister', function() {
-				expect(minioc.has('$baz')).to.be(false);
+				expect(minioc.has('baz')).to.be(false);
 			});
 
 			it('fails to resolve after unregister', function() {
-				expect(minioc.get('$baz')).to.be();
+				expect(minioc.get('baz')).to.be();
 			})
 		});
 
 		describe('an item registered as a singleton factory with value intent', function() {
 			var qux_ctr = 0;
-			minioc.register('$qux').from.singleton.factory(function() {
+			minioc.register('qux').from.singleton.factory(function() {
 				return { qux: qux_ctr++ };
 			});
 
 			it('is known to the container', function() {
-				expect(minioc.has('$qux')).to.be(true);
+				expect(minioc.has('qux')).to.be(true);
 			});
 
 			it('can be retrieved', function() {
-				expect(minioc.get('$qux')).to.eql({ qux: 0 });
+				expect(minioc.get('qux')).to.eql({ qux: 0 });
 			});
 
 			it('each retrieval receives the same result', function() {
-				expect(minioc.get('$qux')).to.eql({ qux: 0 });
+				expect(minioc.get('qux')).to.eql({ qux: 0 });
 			});
 
 			it('cannot be unregistered', function() {
 				expect(function() {
-					minioc.unregister('$qux');
+					minioc.unregister('qux');
 				}).to.throwError();
 			});
 
 			it('is known to the container after unregister attempt', function() {
-				expect(minioc.has('$qux')).to.be(true);
+				expect(minioc.has('qux')).to.be(true);
 			});
 
 			it('resolves after unregister attempt', function() {
-				expect(minioc.get('$qux')).to.eql({ qux: 0 });
+				expect(minioc.get('qux')).to.eql({ qux: 0 });
 			});
 
 		});
@@ -238,36 +238,36 @@ describe("Minioc", function() {
 			, captured
 			;
 
-			minioc.register('$quux').as.factory(function($corge) {
+			minioc.register('quux').as.factory(function($corge) {
 				return { quux: quux_ctr++, corge: $corge };
 			});
 
 			it('is known to the container', function() {
-				expect(minioc.has('$quux')).to.be(true);
+				expect(minioc.has('quux')).to.be(true);
 			});
 
 			it('cannot be fully resolved', function() {
-				expect(minioc.can('$quux')).to.be(false);
+				expect(minioc.can('quux')).to.be(false);
 			});
 
 			it('is not resolvable without its dependency', function() {
-				expect(minioc.can('$quux')).to.be(false);
+				expect(minioc.can('quux')).to.be(false);
 			});
 
 			it('cannot be retrieved without init data', function() {
-				expect(minioc.get('$quux')).to.eql({ quux: 0, corge: undefined});
+				expect(minioc.get('quux')).to.eql({ quux: 0, corge: undefined});
 			});
 
 			it('can be asynchronously retrieved via callback', function() {
 				expect(captured).to.be();
-				minioc.when('$quux', function(val) {
+				minioc.when('quux', function(val) {
 					captured = val;
 				});
 				expect(captured).to.be();
 			});
 
 			it('can registere the missing value', function() {
-				minioc.register('$corge').as.value('This be corge here.');
+				minioc.register('corge').as.value('This be corge here.');
 			});
 
 			it('invokes prior callbacks when registered', function() {
@@ -276,7 +276,7 @@ describe("Minioc", function() {
 
 			it('immediately fulfills asynchronous requests once registered', function() {
 				var ours;
-				minioc.when('$quux', function(val) {
+				minioc.when('quux', function(val) {
 					ours = val;
 				});
 				expect(ours).to.eql({ quux: 2, corge: 'This be corge here.'});
