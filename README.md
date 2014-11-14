@@ -95,6 +95,15 @@ function Marbles($MarbleBag) {
   // details elided.
 }
 
+minioc.register('Marbles').as.ctor(Marbles);
+
+// Supply the container with a registration for MarbleBag...
+var bag = new MarbleBag(2);
+minioc.register('MarbleBag').as.value(bag);
+
+// Now when you get Marbles from the container, the bag will be injected.
+var marbles = minioc.get('Marbles');
+
 ```
 
 **Registering Objects as Singletons**
