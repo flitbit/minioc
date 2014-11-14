@@ -3,51 +3,124 @@ minioc  [![Build Status](https://travis-ci.org/flitbit/minioc.png)](http://travi
 
 A miniature, conventions-based IoC implementation for nodejs.
 
-## Background
+## Use
 
-After using [angularjs](http://angularjs.org/) for a while I became envious of its IoC facility and decided to create something for nodejs that delivered similar convenience on the server side.
+Minioc provides a container that you can use to resolve dependencies.
 
-## `minioc` is an IoC container.
-
-At its core, `minioc` is just a mapping between keys and values. It might be convenient to think of it as a hashtable, except that it behaves differently depending on how an item was put into it.
-
-It understands 3 kinds of things:
-
-* **values** - seems self explanitory
-* **factories** - functions that produce values
-* **constructors** - classes constructed on demand (depending on strategy)
-
-When `register`ing items with the container, the caller has the option of indicating how the container should resolve the item. The defaults are:
-
-* **values** - always resolved as given
-* **factories** - produce a value for each call
-* **constructors** - construct a new instance for each call
-
-[readme-example-2.js](https://github.com/flitbit/minioc/blob/master/examples/readme-example-2.js)
 ```javascript
 var minioc = require('minioc');
 
-// a value...
-minioc.register('item_1').as.value("I'm a value");
-
-// a factory...
-minioc.register('item_2').as.factory(function() {
-	return "I'm produced by a factory";
-});
-
-// a constructor (class)...
-function Item_3() {
-	this.toString = function() { return "I'm an instance created by constructor"; }
+function playWithTheThing(thing) {
+  thing.play();
+  setTimeout(thing.rest.bind(thing), 12000);
 }
 
-minioc.register('item_3').as.ctor(Item_3);
+// Get a Thing from the container...
+var thing = minioc.get('Thing');
 
+playWithTheThing(thing);
 
-// Print them all to the console...
-console.log(minioc.get('item_1').toString());
-console.log(minioc.get('item_2').toString());
-console.log(minioc.get('item_3').toString());
 ```
+
+That was simple.
+
+
+**But Wait!** In order for that simple example to actually work, something needs to `#register` the Thing:
+
+```javascript
+var minioc = require('minioc');
+
+function Thing() {
+  var status = 'idle';
+  Object.defineProperties(this, {
+    play : {
+      value: function play() {
+        if (status !== 'playing') {
+          var interval = 2000;
+          setTimeout(
+            function signalStatus() {
+              if (status === 'playing') {
+                console.log('playing...');
+                setTimeout(signalStatus, interval);
+              } else {
+                console.log('resting.');
+              }
+            }, interval);
+          status = 'playing';
+          console.log("Now we're playing...");
+        }
+      },
+      enumerable: true
+    },
+    rest: {
+      value: function play() {
+        if (status === 'playing') {
+          status = 'rest';
+        }
+      },
+      enumerable: true
+    }
+  });
+}
+
+// Register Thing's constructor with the container:
+minioc.register('Thing').as.ctor(Thing);
+```
+
+That was simple too; this registration tells the container to fulfill requests for our Thing by using the specified constructor.
+
+**But Wait!** The second example has to run before the first, otherwise the first example will fail because our Thing isn't registered yet.
+
+Minioc can also signal `#when` things are available, so instead of worrying about whether the code gets executed in the right order (registration before usage, etc.), you can let the container decouple time/order dependency.
+
+```javascript
+var minioc = require('minioc');
+
+// When a Thing is available, let us play with one...
+minioc.when('Thing', function (thing) {
+  thing.play();
+  setTimeout(thing.rest.bind(thing), 12000);
+});
+```
+
+> Hrmmm. That might be a form of injection.
+
+Speaking of injection, `minioc` will fulfill a constructor's parameters if you indicate that it should do so. The convention is that if you prefix a parameter with a dollar sign `$`, such as `$MarbleBag`, then `minioc` will inject whatever has been registed in the container by that name.
+
+```javascript
+
+function Marbles($MarbleBag) {
+  if (!$MarbleBag) { throw new TypeError('missing the marble bag'); }
+
+  // details elided.
+}
+
+```
+
+**Registering Objects as Singletons**
+
+Sometimes we want everyone to get a single instance (_*Singleton*_), we can do that by changing the registration:
+
+```javascript
+var minioc = require('minioc');
+
+var __instanceCount = 0;
+
+function Thing() {
+	Object.defineProperties(this, {
+		id: {
+			value: ++__instanceCount,
+			enumerable: true
+		}
+	});
+}
+
+minioc.register('Thing').as.singleton.ctor(Thing);
+```
+
+Now wherever we `#get` a thing from the container, minioc will ensure it is a single instance (according to the above code, it will always have id === 1).
+
+
 
 ### Factories and Constructors as Values
 
