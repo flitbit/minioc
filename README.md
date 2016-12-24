@@ -357,7 +357,7 @@ expect(me.age).to.be(info.age);
 
 ## Tests
 
-Tests use [mocha](http://visionmedia.github.io/mocha/) and [expect.js](https://github.com/LearnBoost/expect.js/), so if you clone the [github repository](https://github.com/flitbit/minioc) you'll need to run:
+Tests use [mocha](http://mochajs.org/) and [expect.js](https://github.com/LearnBoost/expect.js/), so if you clone the [github repository](https://github.com/flitbit/minioc) you'll need to run:
 
 ```bash
 npm install
